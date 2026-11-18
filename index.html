@@ -485,7 +485,7 @@ class Component extends DCLogic {
   }
   async testGas() {
     if (!this.gasReady()) return this.flash('웹 앱 URL과 DIARY_KEY를 입력하세요');
-    try { const r = await this.call('ping', {}); this.flash(`연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'}`); this.sync(false); }
+    try { const r = await this.call('ping', {}); this.flash(r.version === '2' ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v2` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
     catch (e) { this.setState({ syncState: 'error', syncMsg: String(e.message || e) }); this.flash('연결 실패: ' + (e.message || e)); }
   }
   installApp() { const p = this._prompt; if (!p) return; p.prompt(); p.userChoice.finally(() => { this._prompt = null; this.setState({ canInstall: false }); }); }
