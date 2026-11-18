@@ -189,7 +189,7 @@ textarea:focus,input:focus{outline:none}
           </div>
 
           <sc-for list="{{ slots }}" as="slot" hint-placeholder-count="3">
-            <div style="grid-area:{{ slot.area }};margin:{{ slot.margin }};min-height:0;display:flex;flex-direction:column;position:relative;z-index:1">
+            <div style="grid-area:{{ slot.area }};margin:{{ slot.margin }};min-height:0;display:flex;flex-direction:column;position:relative;z-index:{{ slot.z }}">
               <sc-if value="{{ slot.locked }}" hint-placeholder-val="{{ false }}">
                 <div style="flex:1;border:1.5px dashed #e4e0ee;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-size:13px;color:#a5a0b5;line-height:1.6">서브 항목 {{ slot.n }}<br>시작일 이전 날짜 — 기록·연동 대상이 아닙니다</div>
               </sc-if>
@@ -834,7 +834,7 @@ class Component extends DCLogic {
       v.dayMeta = [`${dt.getMonth() + 1}월`, h].filter(Boolean).join(' · ');
       const AREAS = [['2 / 1 / 4 / 2', '14px 30px 26px'], ['2 / 2 / 3 / 3', '14px 30px 7px'], ['3 / 2 / 4 / 3', '7px 30px 26px']];
       v.slots = this.slotsFor(k).map((s, i) => {
-        const base = { n: i + 1, badge: `0${i + 1}`, area: AREAS[i][0], margin: AREAS[i][1], menuOpen: S.menu === i, toggleMenu: () => this.setState({ menu: S.menu === i ? null : i }), locked: false, empty: false, filled: false };
+        const base = { n: i + 1, badge: `0${i + 1}`, z: S.menu === i ? 25 : 1, area: AREAS[i][0], margin: AREAS[i][1], menuOpen: S.menu === i, toggleMenu: () => this.setState({ menu: S.menu === i ? null : i }), locked: false, empty: false, filled: false };
         if (lk) return { ...base, locked: true };
         if (!s) return { ...base, empty: true, cats: this.CATS.map(c => ({ ...c, pick: () => { this.setSlot(k, i, { id: this.uid(), cat: c.id, title: '', body: '', time: '', files: [], notion: 'pending', cal: false, updatedAt: Date.now() }); this.setState({ menu: null }); } })) };
         const c = this.cat(s.cat), files = s.files || [], isImg = f => (f.type || '').startsWith('image/');
