@@ -367,7 +367,8 @@ class Component extends DCLogic {
     if (d) { let ch = false; [['2026-11-21', '관리비, 검토'], ['2026-11-22', '입대의 회의']].forEach(([k, t]) => { if (d[k]) { const a = d[k].map(s => s && s.title === t && s.notion === 'synced' ? (ch = true, null) : s); if (a.every(x => !x)) delete d[k]; else d[k] = a; } }); if (ch) try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) {} }
     const today = this.todayKey(), start = (ui && ui.start) || today;
     meta = meta || {};
-    this.setState({ data: this.normalize(d || {}), ics: this._ics || {}, memos: memos || {}, remote: meta.remote || {}, outbox: meta.outbox || { notionDel: [], calDel: [] }, gas: meta.gas || { url: '', key: '' }, lastSync: meta.lastSync || null,
+    this._data = this.normalize(d || {});
+    this.setState({ data: this._data, ics: this._ics || {}, memos: memos || {}, remote: meta.remote || {}, outbox: meta.outbox || { notionDel: [], calDel: [] }, gas: meta.gas || { url: '', key: '' }, lastSync: meta.lastSync || null,
       view: (ui && ui.view) || 'day', sel: (ui && ui.sel) || today, start }, () => { this.persistUI({}); this.restoreFolder().finally(() => setTimeout(() => this.sync(false), 800)); });
     this._iv = setInterval(() => this.sync(false), 5 * 60 * 1000);
     this._on = () => this.sync(false); window.addEventListener('online', this._on);
@@ -402,8 +403,9 @@ class Component extends DCLogic {
   async useFolder(h, migrate) {
     const old = this.dir; this.dir = h;
     const ex = await this.loadFolder(h), data = { ...ex.data };
-    for (const [k, arr] of Object.entries(this.state.data || {})) if (!data[k] && (migrate || !old)) { data[k] = await this.materialize(k, arr, old); this.dirty.add(k); }
+    for (const [k, arr] of Object.entries(this.D)) if (!data[k] && (migrate || !old)) { data[k] = await this.materialize(k, arr, old); this.dirty.add(k); }
     const st = ex.settings || {}, patch = { data: this.normalize(data), memos: { ...this.state.memos, ...ex.memos }, dirName: h.name, needPerm: false };
+    this._data = patch.data;
     if (st.start) patch.start = st.start;
     if (st.gas && st.gas.url && !this.state.gas.url) patch.gas = st.gas;
     if (ex.remote && !Object.keys(this.state.remote).length) patch.remote = ex.remote;
@@ -463,7 +465,7 @@ class Component extends DCLogic {
     const keys = [...this.dirty]; this.dirty.clear(); if (!keys.length) return;
     try {
       for (const k of keys) {
-        const arr = (this.state.data || {})[k];
+        const arr = this.D[k];
         if (!arr) await this.removeFile(this.dayPath(k));
         else await this.writeFile(this.dayPath(k), new Blob([JSON.stringify({ date: k, slots: arr.map(s => s && { ...s, files: (s.files || []).map(({ url, missing, ...f }) => (f.path ? f : { ...f, url })) }) }, null, 2)], { type: 'application/json' }));
       }
@@ -485,7 +487,7 @@ class Component extends DCLogic {
   }
   async testGas() {
     if (!this.gasReady()) return this.flash('웹 앱 URL과 DIARY_KEY를 입력하세요');
-    try { const r = await this.call('ping', {}); this.flash(r.version === '2' ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v2` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
+    try { const r = await this.call('ping', {}); this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 3 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
     catch (e) { this.setState({ syncState: 'error', syncMsg: String(e.message || e) }); this.flash('연결 실패: ' + (e.message || e)); }
   }
   installApp() { const p = this._prompt; if (!p) return; p.prompt(); p.userChoice.finally(() => { this._prompt = null; this.setState({ canInstall: false }); }); }
@@ -494,77 +496,91 @@ class Component extends DCLogic {
     if (!this.gasReady()) { if (manual) { this.setState({ settings: true }); this.flash('먼저 연동 주소와 키를 입력하세요'); } return; }
     if (this._busy) { this._again = true; return; }
     this._busy = true; this.setState({ syncState: 'syncing' });
+    const errs = [];
     try {
-      const S = this.state, items = [];
-      Object.entries(S.data).forEach(([k, arr]) => { if (this.locked(k)) return; arr.forEach((s, i) => { if (s && s.notion === 'pending') items.push({ id: s.id, v: s.updatedAt || 0, date: k, slot: i + 1, cat: s.cat, catName: this.cat(s.cat).name, title: s.title, body: s.body, time: s.time, cal: !!s.cal, notionId: s.notionId || '', eventId: s.eventId || '', files: (s.files || []).map(f => f.name) }); }); });
-      const ob = S.outbox;
-      if (items.length || ob.notionDel.length || ob.calDel.length) {
-        const r = await this.call('push', { items, notionDel: ob.notionDel, calDel: ob.calDel }), sent = {};
-        items.forEach(it => { sent[it.id] = it.v; });
-        const data = { ...this.state.data }, now = Date.now();
-        Object.keys(data).forEach(k => { if (data[k].some(s => s && r.results[s.id])) data[k] = data[k].map(s => { const x = s && r.results[s.id]; return x ? { ...s, notionId: x.notionId || s.notionId, eventId: x.eventId, syncedAt: now, notion: (s.updatedAt || 0) === sent[s.id] ? 'synced' : 'pending' } : s; }); });
-        this.setState({ outbox: { notionDel: ob.notionDel.filter(x => !S.outbox.notionDel.includes(x)), calDel: [] } });
-        this.save(data, true);
-      }
-      if (!pushOnly) {
-        const today = this.todayKey(), from = [S.start, this.key(this.add(this.parse(today), -60))].sort()[1], to = this.key(this.add(this.parse(today), 400));
-        const known = {}; Object.values(this.state.data).forEach(arr => arr.forEach(s => { if (s && s.notionId && s.nEdited) known[s.notionId] = s.nEdited; }));
-        const r = await this.call('pull', { from, to, known }), remote = {};
-        (r.events || []).forEach(e => { if (e.diary || e.date < this.state.start) return; (remote[e.date] = remote[e.date] || []).push({ time: e.time, title: e.title, cal: e.cal }); });
-        this.setState({ remote });
-        if (r.notion) this.mergeNotion(r.notion, from, to);
-      }
+      await this.pushPending(errs);
+      if (!pushOnly) await this.pullRemote(errs);
       const t = new Date();
-      this.setState({ syncState: 'ok', syncMsg: '', lastSync: `${t.getMonth() + 1}/${t.getDate()} ${this.pad(t.getHours())}:${this.pad(t.getMinutes())}` }, () => this.writeMeta());
-      if (manual) this.flash('동기화 완료');
+      this.setState({ syncState: errs.length ? 'error' : 'ok', syncMsg: errs.join(' / '), lastSync: `${t.getMonth() + 1}/${t.getDate()} ${this.pad(t.getHours())}:${this.pad(t.getMinutes())}` }, () => this.writeMeta());
+      if (manual) this.flash(errs.length ? '일부 동기화 실패: ' + errs[0] : '동기화 완료');
     } catch (e) {
       const off = navigator.onLine === false || e instanceof TypeError;
       this.setState({ syncState: off ? 'offline' : 'error', syncMsg: String(e.message || e) });
       if (manual) this.flash(off ? '연결할 수 없습니다 — 노트북에 저장해 두고 연결되면 전송합니다' : '동기화 실패: ' + (e.message || e));
     }
     this._busy = false;
-    if (this._again) { this._again = false; this.sync(false); }
+    if (this._again) { this._again = false; setTimeout(() => this.sync(false), 300); }
+  }
+  async pushPending(errs) {
+    const items = [], ob = this.state.outbox || { notionDel: [], calDel: [] };
+    Object.entries(this.D).forEach(([k, arr]) => { if (this.locked(k)) return; arr.forEach((s, i) => { if (s && s.notion === 'pending') items.push({ id: s.id, v: s.updatedAt || 0, date: k, slot: i + 1, cat: s.cat, catName: this.cat(s.cat).name, title: s.title, body: s.body, time: s.time, cal: !!s.cal, notionId: s.notionId || '', eventId: s.eventId || '', files: (s.files || []).map(f => f.name) }); }); });
+    const sentDel = ob.notionDel.slice(), sentCal = ob.calDel.slice();
+    if (!items.length && !sentDel.length && !sentCal.length) return;
+    const chunks = []; for (let n = 0; n < items.length; n += 8) chunks.push(items.slice(n, n + 8)); if (!chunks.length) chunks.push([]);
+    for (let c = 0; c < chunks.length; c++) {
+      const chunk = chunks[c], r = await this.call('push', { items: chunk, notionDel: c === 0 ? sentDel : [], calDel: c === 0 ? sentCal : [] });
+      const res = r.results || {}, sent = {}, now = Date.now(); chunk.forEach(it => { sent[it.id] = it.v; });
+      const data = { ...this.D };
+      Object.keys(data).forEach(k => {
+        if (!data[k].some(s => s && res[s.id])) return;
+        data[k] = data[k].map(s => {
+          const x = s && res[s.id]; if (!x) return s;
+          const ids = { notionId: x.notionId || s.notionId || '', eventId: x.eventId !== undefined ? x.eventId : s.eventId };
+          if (x.error) { errs.push(x.error); return { ...s, ...ids }; }
+          return { ...s, ...ids, syncedAt: now, notion: (s.updatedAt || 0) === sent[s.id] ? 'synced' : 'pending' };
+        });
+      });
+      this.save(data, true);
+      if (c === 0) this.setState(st => ({ outbox: { notionDel: st.outbox.notionDel.filter(x => !sentDel.includes(x)), calDel: st.outbox.calDel.filter(x => !sentCal.includes(x)) } }), () => this.writeMeta());
+    }
+  }
+  async pullRemote(errs) {
+    const S = this.state, today = this.todayKey();
+    const from = [S.start, this.key(this.add(this.parse(today), -60))].sort()[1], to = this.key(this.add(this.parse(today), 400));
+    const known = {};
+    Object.entries(this.D).forEach(([k, arr]) => { if (k < from) return; arr.forEach(s => { if (s && s.notionId) known[s.notionId] = s.nEdited || ''; }); });
+    const r = await this.call('pull', { from, to, known }), remote = {};
+    (r.events || []).forEach(e => { if (e.diary || this.locked(e.date)) return; (remote[e.date] = remote[e.date] || []).push({ time: e.time, title: e.title, cal: e.cal }); });
+    this.setState({ remote });
+    if (r.notionError) errs.push('노션: ' + r.notionError);
+    if (r.notion) this.mergeNotion(r.notion, r.deleted || []);
   }
   catId(name) { const c = this.CATS.find(c => c.name === name); if (c) return c.id; const v = name || ''; return /입대|입주자/.test(v) ? 'ipdae' : /관리/.test(v) ? 'office' : /컨설/.test(v) ? 'consult' : 'daily'; }
   placeSlot(data, k, s, pref) { const a = data[k] || [], arr = [0, 1, 2, 3].map(j => a[j] || null); const i = pref && pref >= 1 && pref <= 4 && !arr[pref - 1] ? pref - 1 : arr.findIndex(x => !x); if (i < 0) return false; arr[i] = s; data[k] = arr; return true; }
-  mergeNotion(list, from, to) {
-    const data = { ...this.state.data }, idx = {}, seen = new Set(); let changed = false;
+  mergeNotion(list, deleted) {
+    const data = { ...this.D }, idx = {}; let changed = false;
     Object.entries(data).forEach(([k, arr]) => arr.forEach((s, i) => { if (s && s.notionId) idx[s.notionId] = [k, i]; }));
+    const setAt = (k, i, v) => { const a = [0, 1, 2, 3].map(j => (data[k] || [])[j] || null); a[i] = v; if (a.every(x => !x)) delete data[k]; else data[k] = a; changed = true; };
     list.forEach(n => {
       if (!n.date || this.locked(n.date)) return;
-      seen.add(n.id);
-      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', body: n.body || '', time: n.time || '', nEdited: n.edited };
-      if (n.body === null || n.body === undefined) delete fields.body;
+      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', nEdited: n.edited };
+      if (typeof n.body === 'string') fields.body = n.body;
       const at = idx[n.id];
       if (at) {
-        const [k, i] = at, s = data[k][i];
-        if (s.nEdited !== n.edited) { data[k] = data[k].map((x, j) => j === i ? { ...x, nEdited: n.edited } : x); changed = true; }
-        if (s.notion === 'pending' || ed <= (s.syncedAt || 0) + 60000) return;
-        changed = true;
-        if (k === n.date) { data[k] = data[k].map((x, j) => j === i ? { ...x, ...fields, syncedAt: ed } : x); return; }
-        data[k] = data[k].map((x, j) => j === i ? null : x); if (data[k].every(x => !x)) delete data[k];
-        this.placeSlot(data, n.date, { ...s, ...fields, syncedAt: ed }, n.slot); return;
+        const [k, i] = at, s = data[k] && data[k][i]; if (!s) return;
+        const fresh = s.notion !== 'pending' && ed > (s.syncedAt || 0) + 60000;
+        if (!fresh) { if (s.nEdited !== n.edited) setAt(k, i, { ...s, nEdited: n.edited }); return; }
+        if (k === n.date) { setAt(k, i, { ...s, ...fields, syncedAt: ed }); return; }
+        const ta = data[n.date] || []; if (![0, 1, 2, 3].some(j => !ta[j])) return;
+        setAt(k, i, null); this.placeSlot(data, n.date, { ...s, ...fields, syncedAt: ed }, n.slot); return;
       }
-      const twin = (data[n.date] || []).findIndex(s => s && !s.notionId && s.title === fields.title && s.cat === fields.cat);
-      if (twin >= 0) { data[n.date] = data[n.date].map((x, j) => j === twin ? { ...x, notionId: n.id, syncedAt: ed, nEdited: n.edited } : x); changed = true; return; }
-      if (this.placeSlot(data, n.date, { id: this.uid(), ...fields, files: [], notion: 'synced', cal: false, notionId: n.id, syncedAt: ed, updatedAt: 0 }, n.slot)) changed = true;
+      const ta = data[n.date] || [];
+      const twin = ta.findIndex(s => s && !s.notionId && s.title === fields.title && s.cat === fields.cat);
+      if (twin >= 0) { setAt(n.date, twin, { ...ta[twin], notionId: n.id, nEdited: n.edited, syncedAt: ed }); return; }
+      if (this.placeSlot(data, n.date, { id: this.uid(), body: '', ...fields, files: [], notion: 'synced', cal: false, notionId: n.id, syncedAt: ed, updatedAt: 0 }, n.slot)) changed = true;
     });
-    Object.keys(data).forEach(k => {
-      if (k < from || k > to) return;
-      const arr = data[k], na = arr.map(s => s && s.notionId && s.notion === 'synced' && !seen.has(s.notionId) ? null : s);
-      if (na.some((s, i) => s !== arr[i])) { changed = true; if (na.every(x => !x)) delete data[k]; else data[k] = na; }
+    deleted.forEach(id => {
+      Object.keys(data).forEach(k => (data[k] || []).forEach((s, i) => { if (s && s.notionId === id && s.notion !== 'pending') { (s.files || []).forEach(f => f.path && this.removeFile(f.path)); setAt(k, i, null); } }));
     });
     if (changed) this.save(data, true);
   }
   removeSlot(k, i) {
     const s = this.slotsFor(k)[i]; if (!s) return;
     (s.files || []).forEach(f => f.path && this.removeFile(f.path));
-    const ob = { ...this.state.outbox };
-    if (s.notionId) ob.notionDel = [...ob.notionDel, s.notionId];
-    if (s.eventId) ob.calDel = [...ob.calDel, s.eventId];
-    this.setState({ outbox: ob }, () => this.writeMeta());
+    if (s.notionId || s.eventId) this.setState(st => ({ outbox: { notionDel: s.notionId ? [...st.outbox.notionDel, s.notionId] : st.outbox.notionDel, calDel: s.eventId ? [...st.outbox.calDel, s.eventId] : st.outbox.calDel } }), () => this.writeMeta());
     this.setSlot(k, i, null);
   }
+  get D() { return this._data || this.state.data || {}; }
   todayKey() { const t = new Date(); return this.key(t < this.parse(this.MIN) ? this.parse(this.MIN) : t); }
   seed(t) {
     const s = (cat, title, body, extra) => ({ cat, title, body, time: '', files: [], notion: 'synced', cal: false, ...extra });
@@ -609,11 +625,11 @@ class Component extends DCLogic {
   cat(id) { return this.CATS.find(c => c.id === id) || this.CATS[0]; }
   locked(k) { return k < (this.state.start || this.MIN); }
   numColor(dt, k) { return (this.hol(k) || dt.getDay() === 0) ? this.RED : dt.getDay() === 6 ? this.BLUE : this.INK; }
-  slotsFor(k) { const a = (this.state.data || {})[k] || []; return [0, 1, 2, 3].map(i => a[i] || null); }
+  slotsFor(k) { const a = this.D[k] || []; return [0, 1, 2, 3].map(i => a[i] || null); }
   filled(k) { return this.locked(k) ? [] : this.slotsFor(k).filter(Boolean); }
   persistUI(p) { this.setState(p, () => { try { localStorage.setItem(this.KEY + '.ui', JSON.stringify({ view: this.state.view, sel: this.state.sel, start: this.state.start })); } catch (e) {} }); }
   save(data, quiet) {
-    const old = this.state.data || {};
+    const old = this.D; this._data = data;
     Object.keys({ ...old, ...data }).forEach(k => { if (old[k] !== data[k]) this.dirty.add(k); });
     this.setState({ data });
     if (this.dir) this.flushSoon();
@@ -622,7 +638,7 @@ class Component extends DCLogic {
   }
   setMemo(id, v) { const memos = { ...this.state.memos, [id]: v }; this.setState({ memos }, () => this.writeMemos()); try { localStorage.setItem(this.KEY + '.memos', JSON.stringify(memos)); } catch (e) {} }
   flash(t) { clearTimeout(this._t); this.setState({ toast: t }); this._t = setTimeout(() => this.setState({ toast: null }), 2600); }
-  setSlot(k, i, s) { const data = { ...this.state.data }; const arr = [...this.slotsFor(k)]; arr[i] = s; if (arr.every(x => !x)) delete data[k]; else data[k] = arr; this.save(data); }
+  setSlot(k, i, s) { const data = { ...this.D }; const arr = [...this.slotsFor(k)]; arr[i] = s; if (arr.every(x => !x)) delete data[k]; else data[k] = arr; this.save(data); }
   updateAt(k, i, patch) { const cur = this.slotsFor(k)[i]; if (cur) this.setSlot(k, i, { ...cur, ...patch, notion: 'pending', updatedAt: Date.now() }); }
   addFiles(k, i, list) {
     const files = Array.from(list || []); if (!files.length) return;
@@ -735,7 +751,7 @@ class Component extends DCLogic {
       const cD = col(['날짜', 'date', '일자']), cT = col(['제목', 'title', 'name', '이름']), cC = col(['카테고리', 'category', '분류', '구분', 'tags', '태그']), cB = col(['본문', '내용', 'text', 'note', '메모']), cH = col(['시간', 'time']);
       if (cD < 0) return this.flash('CSV에서 날짜 열을 찾지 못했습니다');
       const catOf = v => /입대|입주자/.test(v) ? 'ipdae' : /관리/.test(v) ? 'office' : /컨설/.test(v) ? 'consult' : 'daily';
-      const data = { ...this.state.data }; let added = 0, skipped = 0, full = 0;
+      const data = { ...this.D }; let added = 0, skipped = 0, full = 0;
       rows.slice(1).forEach(r => {
         const dd = this.csvDate(r[cD]); if (!dd || this.locked(dd.k)) { skipped++; return; }
         const title = cT >= 0 ? (r[cT] || '').trim() : '', cat = catOf(cC >= 0 ? r[cC] || '' : '');
@@ -767,7 +783,7 @@ class Component extends DCLogic {
   }
   syncDayOld() {
     const k = this.state.sel;
-    const data = { ...this.state.data }; if (!data[k]) return this.flash('전송할 항목이 없습니다');
+    const data = { ...this.D }; if (!data[k]) return this.flash('전송할 항목이 없습니다');
     data[k] = data[k].map(s => s && { ...s, notion: 'synced' }); this.save(data); this.flash('이 날짜를 Notion으로 전송했습니다');
   }
   ctx() { const c = this.canvasRef.current; return c && c.getContext('2d'); }
