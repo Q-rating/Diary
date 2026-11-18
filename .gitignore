@@ -1,0 +1,14 @@
+# 운영체제·편집기 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# 다이어리 기록이 실수로 올라가지 않도록 (기록은 노트북 폴더에만 보관)
+/20[0-9][0-9]/
+첨부/
+memos.json
+settings.json
+calendar.json
+*.zip
