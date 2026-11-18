@@ -188,7 +188,7 @@ textarea:focus,input:focus{outline:none}
             </div>
           </div>
 
-          <sc-for list="{{ slots }}" as="slot" hint-placeholder-count="3">
+          <sc-for list="{{ slots }}" as="slot" hint-placeholder-count="4">
             <div style="grid-area:{{ slot.area }};margin:{{ slot.margin }};min-height:0;display:flex;flex-direction:column;position:relative;z-index:{{ slot.z }}">
               <sc-if value="{{ slot.locked }}" hint-placeholder-val="{{ false }}">
                 <div style="flex:1;border:1.5px dashed #e4e0ee;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-size:13px;color:#a5a0b5;line-height:1.6">서브 항목 {{ slot.n }}<br>시작일 이전 날짜 — 기록·연동 대상이 아닙니다</div>
@@ -200,7 +200,7 @@ textarea:focus,input:focus{outline:none}
                   <div style="position:relative">
                     <button onClick="{{ slot.toggleMenu }}" style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:9px 16px;font-size:14px;cursor:pointer;display:flex;gap:8px;align-items:center">목록에서 선택 <span style="font-size:9px">▼</span></button>
                     <sc-if value="{{ slot.menuOpen }}" hint-placeholder-val="{{ false }}">
-                      <div style="position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 6px);z-index:30;width:230px;background:#ffffff;border:1px solid #e6e2ef;border-radius:12px;box-shadow:0 12px 32px rgba(45,42,58,0.16);padding:6px;display:flex;flex-direction:column">
+                      <div style="position:fixed;left:{{ slot.mx }};top:{{ slot.my }};z-index:30;width:230px;background:#ffffff;border:1px solid #e6e2ef;border-radius:12px;box-shadow:0 12px 32px rgba(45,42,58,0.16);padding:6px;display:flex;flex-direction:column">
                         <sc-for list="{{ slot.cats }}" as="c" hint-placeholder-count="4">
                           <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:10px;border:none;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left" style-hover="background:#f2f0f8">
                             <span style="width:10px;height:10px;border-radius:50%;background:{{ c.color }}"></span>
@@ -218,7 +218,7 @@ textarea:focus,input:focus{outline:none}
                     <div style="position:relative">
                       <button onClick="{{ slot.toggleMenu }}" style="border:none;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;gap:6px;align-items:center;background:#ffffff;color:{{ slot.color }}">{{ slot.badge }} {{ slot.catName }} <span style="font-size:8px">▼</span></button>
                       <sc-if value="{{ slot.menuOpen }}" hint-placeholder-val="{{ false }}">
-                        <div style="position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:230px;background:#ffffff;border:1px solid #e6e2ef;border-radius:12px;box-shadow:0 12px 32px rgba(45,42,58,0.16);padding:6px;display:flex;flex-direction:column">
+                        <div style="position:fixed;left:{{ slot.mx }};top:{{ slot.my }};z-index:30;width:230px;background:#ffffff;border:1px solid #e6e2ef;border-radius:12px;box-shadow:0 12px 32px rgba(45,42,58,0.16);padding:6px;display:flex;flex-direction:column">
                           <sc-for list="{{ slot.cats }}" as="c" hint-placeholder-count="4">
                             <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:10px;border:none;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left" style-hover="background:#f2f0f8">
                               <span style="width:10px;height:10px;border-radius:50%;background:{{ c.color }}"></span>
@@ -311,7 +311,7 @@ textarea:focus,input:focus{outline:none}
         <div style="border:1px solid #e6e2ef;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600">Notion</span><button onClick="{{ toggleNotion }}" style="border:none;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer;background:{{ notionBtnBg }};color:{{ notionBtnColor }}">{{ notionBtn }}</button></div>
           <div style="font-size:13px;color:#6c6880;line-height:1.6">데이터베이스 ‘다이어리’ — 서브 항목 1개 = 행 1개 · {{ startLabel }} 이후만 동기화</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:4px"><label style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer">노션 CSV 가져오기<input type="file" accept=".csv,text/csv" onChange="{{ onCSV }}" style="display:none"></label><span style="font-size:12px;color:#8a8599;line-height:1.5">데이터베이스 ··· → 내보내기 → CSV. 날짜·제목·카테고리·본문·시간 열을 자동 인식, 날짜당 최대 3개</span></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:4px"><label style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer">노션 CSV 가져오기<input type="file" accept=".csv,text/csv" onChange="{{ onCSV }}" style="display:none"></label><span style="font-size:12px;color:#8a8599;line-height:1.5">데이터베이스 ··· → 내보내기 → CSV. 날짜·제목·카테고리·본문·시간 열을 자동 인식, 날짜당 최대 4개</span></div>
         </div>
       </div>
     </div>
@@ -508,7 +508,8 @@ class Component extends DCLogic {
       }
       if (!pushOnly) {
         const today = this.todayKey(), from = [S.start, this.key(this.add(this.parse(today), -60))].sort()[1], to = this.key(this.add(this.parse(today), 400));
-        const r = await this.call('pull', { from, to }), remote = {};
+        const known = {}; Object.values(this.state.data).forEach(arr => arr.forEach(s => { if (s && s.notionId && s.nEdited) known[s.notionId] = s.nEdited; }));
+        const r = await this.call('pull', { from, to, known }), remote = {};
         (r.events || []).forEach(e => { if (e.diary || e.date < this.state.start) return; (remote[e.date] = remote[e.date] || []).push({ time: e.time, title: e.title, cal: e.cal }); });
         this.setState({ remote });
         if (r.notion) this.mergeNotion(r.notion, from, to);
@@ -525,17 +526,19 @@ class Component extends DCLogic {
     if (this._again) { this._again = false; this.sync(false); }
   }
   catId(name) { const c = this.CATS.find(c => c.name === name); if (c) return c.id; const v = name || ''; return /입대|입주자/.test(v) ? 'ipdae' : /관리/.test(v) ? 'office' : /컨설/.test(v) ? 'consult' : 'daily'; }
-  placeSlot(data, k, s, pref) { const arr = [...(data[k] || [null, null, null])]; const i = pref && pref >= 1 && pref <= 3 && !arr[pref - 1] ? pref - 1 : arr.findIndex(x => !x); if (i < 0) return false; arr[i] = s; data[k] = arr; return true; }
+  placeSlot(data, k, s, pref) { const a = data[k] || [], arr = [0, 1, 2, 3].map(j => a[j] || null); const i = pref && pref >= 1 && pref <= 4 && !arr[pref - 1] ? pref - 1 : arr.findIndex(x => !x); if (i < 0) return false; arr[i] = s; data[k] = arr; return true; }
   mergeNotion(list, from, to) {
     const data = { ...this.state.data }, idx = {}, seen = new Set(); let changed = false;
     Object.entries(data).forEach(([k, arr]) => arr.forEach((s, i) => { if (s && s.notionId) idx[s.notionId] = [k, i]; }));
     list.forEach(n => {
       if (!n.date || this.locked(n.date)) return;
       seen.add(n.id);
-      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', body: n.body || '', time: n.time || '' };
+      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', body: n.body || '', time: n.time || '', nEdited: n.edited };
+      if (n.body === null || n.body === undefined) delete fields.body;
       const at = idx[n.id];
       if (at) {
         const [k, i] = at, s = data[k][i];
+        if (s.nEdited !== n.edited) { data[k] = data[k].map((x, j) => j === i ? { ...x, nEdited: n.edited } : x); changed = true; }
         if (s.notion === 'pending' || ed <= (s.syncedAt || 0) + 60000) return;
         changed = true;
         if (k === n.date) { data[k] = data[k].map((x, j) => j === i ? { ...x, ...fields, syncedAt: ed } : x); return; }
@@ -543,7 +546,7 @@ class Component extends DCLogic {
         this.placeSlot(data, n.date, { ...s, ...fields, syncedAt: ed }, n.slot); return;
       }
       const twin = (data[n.date] || []).findIndex(s => s && !s.notionId && s.title === fields.title && s.cat === fields.cat);
-      if (twin >= 0) { data[n.date] = data[n.date].map((x, j) => j === twin ? { ...x, notionId: n.id, syncedAt: ed } : x); changed = true; return; }
+      if (twin >= 0) { data[n.date] = data[n.date].map((x, j) => j === twin ? { ...x, notionId: n.id, syncedAt: ed, nEdited: n.edited } : x); changed = true; return; }
       if (this.placeSlot(data, n.date, { id: this.uid(), ...fields, files: [], notion: 'synced', cal: false, notionId: n.id, syncedAt: ed, updatedAt: 0 }, n.slot)) changed = true;
     });
     Object.keys(data).forEach(k => {
@@ -606,7 +609,7 @@ class Component extends DCLogic {
   cat(id) { return this.CATS.find(c => c.id === id) || this.CATS[0]; }
   locked(k) { return k < (this.state.start || this.MIN); }
   numColor(dt, k) { return (this.hol(k) || dt.getDay() === 0) ? this.RED : dt.getDay() === 6 ? this.BLUE : this.INK; }
-  slotsFor(k) { return (this.state.data || {})[k] || [null, null, null]; }
+  slotsFor(k) { const a = (this.state.data || {})[k] || []; return [0, 1, 2, 3].map(i => a[i] || null); }
   filled(k) { return this.locked(k) ? [] : this.slotsFor(k).filter(Boolean); }
   persistUI(p) { this.setState(p, () => { try { localStorage.setItem(this.KEY + '.ui', JSON.stringify({ view: this.state.view, sel: this.state.sel, start: this.state.start })); } catch (e) {} }); }
   save(data, quiet) {
@@ -736,14 +739,14 @@ class Component extends DCLogic {
       rows.slice(1).forEach(r => {
         const dd = this.csvDate(r[cD]); if (!dd || this.locked(dd.k)) { skipped++; return; }
         const title = cT >= 0 ? (r[cT] || '').trim() : '', cat = catOf(cC >= 0 ? r[cC] || '' : '');
-        const arr = [...(data[dd.k] || [null, null, null])];
+        const arr = [0, 1, 2, 3].map(j => (data[dd.k] || [])[j] || null);
         if (arr.some(s => s && s.title === title && s.cat === cat)) return;
         const i = arr.findIndex(s => !s); if (i < 0) { full++; return; }
         arr[i] = { id: this.uid(), cat, title, body: cB >= 0 ? (r[cB] || '').trim() : '', time: (cH >= 0 && (r[cH] || '').trim()) || dd.time, files: [], notion: 'synced', cal: false };
         data[dd.k] = arr; added++;
       });
       this.save(data);
-      this.flash(`Notion에서 ${added}개 항목을 가져왔습니다` + (skipped ? ` · 시작일 이전/날짜 없음 ${skipped}개 제외` : '') + (full ? ` · 3칸 초과 ${full}개` : ''));
+      this.flash(`Notion에서 ${added}개 항목을 가져왔습니다` + (skipped ? ` · 시작일 이전/날짜 없음 ${skipped}개 제외` : '') + (full ? ` · 4칸 초과 ${full}개` : ''));
     });
   }
   lo(dt) { const m = this.parse(this.MIN); return dt < m ? m : dt; }
@@ -832,9 +835,10 @@ class Component extends DCLogic {
       v.dayHead = `${y} · ${dt.getMonth() + 1}월 · ${wk}주차`; v.dayFolio = lk ? '시작일 이전 · 연동 안 함' : '';
       v.dayNum = dt.getDate(); v.dayDow = this.DOW[dt.getDay()] + '요일'; v.dayColor = this.numColor(dt, k);
       v.dayMeta = [`${dt.getMonth() + 1}월`, h].filter(Boolean).join(' · ');
-      const AREAS = [['2 / 1 / 4 / 2', '14px 30px 26px'], ['2 / 2 / 3 / 3', '14px 30px 7px'], ['3 / 2 / 4 / 3', '7px 30px 26px']];
+      const AREAS = [['2 / 1 / 3 / 2', '14px 30px 7px'], ['3 / 1 / 4 / 2', '7px 30px 26px'], ['2 / 2 / 3 / 3', '14px 30px 7px'], ['3 / 2 / 4 / 3', '7px 30px 26px']];
       v.slots = this.slotsFor(k).map((s, i) => {
-        const base = { n: i + 1, badge: `0${i + 1}`, z: S.menu === i ? 25 : 1, area: AREAS[i][0], margin: AREAS[i][1], menuOpen: S.menu === i, toggleMenu: () => this.setState({ menu: S.menu === i ? null : i }), locked: false, empty: false, filled: false };
+        const base = { n: i + 1, badge: `0${i + 1}`, z: S.menu === i ? 25 : 1, area: AREAS[i][0], margin: AREAS[i][1], menuOpen: S.menu === i, mx: ((S.mpos || {}).left || 0) + 'px', my: ((S.mpos || {}).top || 0) + 'px',
+          toggleMenu: e => { if (S.menu === i) return this.setState({ menu: null }); const r = e.currentTarget.getBoundingClientRect(), mh = 250, up = r.bottom + mh + 8 > window.innerHeight; this.setState({ menu: i, mpos: { left: Math.max(8, Math.min(r.left, window.innerWidth - 238)), top: up ? Math.max(8, r.top - mh - 6) : r.bottom + 6 } }); }, locked: false, empty: false, filled: false };
         if (lk) return { ...base, locked: true };
         if (!s) return { ...base, empty: true, cats: this.CATS.map(c => ({ ...c, pick: () => { this.setSlot(k, i, { id: this.uid(), cat: c.id, title: '', body: '', time: '', files: [], notion: 'pending', cal: false, updatedAt: Date.now() }); this.setState({ menu: null }); } })) };
         const c = this.cat(s.cat), files = s.files || [], isImg = f => (f.type || '').startsWith('image/');
