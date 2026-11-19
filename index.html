@@ -9,33 +9,28 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#efedf5">
+<meta name="theme-color" content="#e9e5de">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
-html,body{margin:0;height:100%;background:#efedf5;color:#2d2a3a;font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{margin:0;height:100%;background:#e9e5de;color:#2d2a3a;font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:#2d2a3a}a:hover{color:oklch(0.55 0.13 255)}
 input,textarea,button{font-family:inherit;color:inherit}
 textarea:focus,input:focus{outline:none}
 </style>
 </helmet>
-<div style="height:100vh;display:flex;flex-direction:column;background:#efedf5;min-width:860px">
-  <header style="flex:none;display:flex;align-items:center;gap:18px;padding:12px 28px;flex-wrap:wrap">
-    <div style="display:flex;align-items:baseline;gap:8px">
-      <span style="font-family:'Gowun Dodum',sans-serif;font-size:20px">만년 다이어리</span>
-      <span style="font-size:12px;color:#8a8599">since {{ startLabel }}</span>
-    </div>
-    <div style="display:flex;gap:2px;background:#e4e0ee;border-radius:999px;padding:3px">
+<div style="height:100vh;display:flex;flex-direction:column;background:{{ deskBg }};min-width:860px">
+  <header style="flex:none;display:flex;align-items:center;gap:18px;padding:24px 83px 8px;flex-wrap:wrap">
+    <div style="display:flex;gap:2px;background:rgba(45,42,58,0.07);border-radius:999px;padding:3px">
       <sc-for list="{{ navs }}" as="nav" hint-placeholder-count="4">
         <button onClick="{{ nav.go }}" style="border:none;cursor:pointer;padding:7px 16px;border-radius:999px;font-size:14px;font-weight:500;background:{{ nav.bg }};color:{{ nav.color }}">{{ nav.label }}</button>
       </sc-for>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:6px">
       <button onClick="{{ prev }}" style="width:32px;height:32px;border-radius:50%;border:1px solid #d9d4e6;background:#ffffff;cursor:pointer;opacity:{{ prevOp }}">‹</button>
-      <span style="font-family:'Gowun Dodum',sans-serif;font-size:19px;min-width:170px;text-align:center">{{ title }}</span>
+      <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:19px;min-width:88px;padding:0 6px;text-align:center;white-space:nowrap">{{ title }}</span>
       <button onClick="{{ next }}" style="width:32px;height:32px;border-radius:50%;border:1px solid #d9d4e6;background:#ffffff;cursor:pointer">›</button>
-      <button onClick="{{ goToday }}" style="border:1px solid #d9d4e6;background:#ffffff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer">오늘</button>
+      <button onClick="{{ goToday }}" style="margin-left:6px;border:1px solid #d9d4e6;background:#ffffff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer">오늘</button>
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
       <sc-if value="{{ needPerm }}" hint-placeholder-val="{{ false }}"><button onClick="{{ grantFolder }}" style="border:none;background:oklch(0.94 0.045 65);color:oklch(0.45 0.12 55);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer">‘{{ dirName }}’ 폴더 접근 허용</button></sc-if>
@@ -46,38 +41,61 @@ textarea:focus,input:focus{outline:none}
     </div>
   </header>
 
-  <div style="flex:1;min-height:0;padding:4px 28px 24px;display:flex">
-    <div style="flex:1;min-height:0;position:relative;border-radius:14px;background:#ffffff;box-shadow:0 1px 0 #e4e0ee,0 18px 44px rgba(45,42,58,0.10);overflow:hidden;display:flex">
+  <div style="flex:1;min-height:0;padding:8px 83px 48px;display:flex">
+    <div style="flex:1;min-height:0;position:relative;border-radius:14px;background:#ffffff;box-shadow:0 1px 2px rgba(45,42,58,0.06),0 22px 50px rgba(45,42,58,0.12);overflow:hidden;display:flex">
       <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#e9e6f1;z-index:3;pointer-events:none"></div>
 
       <sc-if value="{{ isYear }}" hint-placeholder-val="{{ false }}">
         <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0">
-          <sc-for list="{{ yearPages }}" as="pg" hint-placeholder-count="2">
-            <div style="min-height:0;overflow:auto;padding:22px 32px 24px;display:flex;flex-direction:column;gap:14px;background:{{ pg.shade }}">
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>{{ pg.head }}</span><span>{{ pg.folio }}</span></div>
-              <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:18px 26px">
-                <sc-for list="{{ pg.months }}" as="m" hint-placeholder-count="6">
-                  <div style="display:flex;flex-direction:column;min-height:0">
-                    <button onClick="{{ m.open }}" style="display:flex;justify-content:space-between;align-items:baseline;border:none;background:none;padding:0 0 6px;cursor:pointer">
-                      <span style="font-family:'Gowun Dodum',sans-serif;font-size:19px">{{ m.label }}</span>
-                      <span style="font-size:11px;color:#8a8599">{{ m.count }}</span>
-                    </button>
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);font-size:10px;text-align:center;margin-bottom:2px">
-                      <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7"><span style="color:{{ w.color }}">{{ w.label }}</span></sc-for>
+          <div style="min-height:0;overflow:auto;padding:22px 30px 24px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(to left,rgba(45,42,58,0.05),rgba(45,42,58,0) 36px)">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>{{ yearHead }}</span><span>연간</span></div>
+            <div style="flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:12px 10px">
+              <sc-for list="{{ months }}" as="m" hint-placeholder-count="12">
+                <div style="display:flex;flex-direction:column;min-height:0;min-width:0;border-radius:10px;padding:6px 4px;background:{{ m.bg }}">
+                  <button onClick="{{ m.open }}" style="display:flex;justify-content:space-between;align-items:baseline;border:none;background:none;padding:0 0 4px;cursor:pointer">
+                    <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:16px">{{ m.label }}</span>
+                    <span style="font-size:10px;color:#8a8599">{{ m.count }}</span>
+                  </button>
+                  <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:9px;text-align:center;margin-bottom:1px">
+                    <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7"><span style="color:{{ w.color }}">{{ w.label }}</span></sc-for>
+                  </div>
+                  <div style="flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(16px,1fr)">
+                    <sc-for list="{{ m.cells }}" as="c" hint-placeholder-count="42">
+                      <button onClick="{{ c.open }}" style="min-width:0;border:none;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:{{ c.op }}">
+                        <span style="width:100%;max-width:20px;height:15px;line-height:15px;border-radius:999px;font-size:10px;font-variant-numeric:tabular-nums;color:{{ c.color }};background:{{ c.bg }}">{{ c.d }}</span>
+                        <span style="width:3px;height:3px;border-radius:50%;background:{{ c.dot }}"></span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="min-height:0;padding:22px 30px 24px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(to right,rgba(45,42,58,0.05),rgba(45,42,58,0) 36px)">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>{{ monthHead }}</span><button onClick="{{ openMonth }}" style="border:none;background:none;padding:0;font-size:12px;color:#6c6880;cursor:pointer">월간으로 열기 ›</button></div>
+            <div style="flex:1;min-height:0;display:flex;flex-direction:column;border:1px solid #efecf5;border-radius:10px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#f7f5fb">
+                <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7"><div style="padding:7px 8px;font-size:11px;font-weight:600;color:{{ w.color }}">{{ w.label }}</div></sc-for>
+              </div>
+              <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">
+                <sc-for list="{{ monthCells }}" as="c" hint-placeholder-count="35">
+                  <div onClick="{{ c.open }}" style="min-height:0;overflow:hidden;padding:5px 6px;border-top:1px solid #efecf5;border-right:1px solid #efecf5;cursor:pointer;display:flex;flex-direction:column;gap:3px;opacity:{{ c.op }};box-shadow:{{ c.ring }};background:{{ c.bg }}" style-hover="background:#f7f5fb">
+                    <div style="flex:none;display:flex;align-items:baseline;gap:4px;min-width:0">
+                      <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:15px;color:{{ c.numColor }}">{{ c.num }}</span>
+                      <span style="font-size:10px;color:oklch(0.55 0.16 28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.hol }}</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(22px,1fr)">
-                      <sc-for list="{{ m.cells }}" as="c" hint-placeholder-count="42">
-                        <button onClick="{{ c.open }}" style="border:none;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:{{ c.op }}">
-                          <span style="width:22px;height:17px;line-height:17px;border-radius:999px;font-size:11px;font-variant-numeric:tabular-nums;color:{{ c.color }};background:{{ c.bg }}">{{ c.d }}</span>
-                          <span style="width:4px;height:4px;border-radius:50%;background:{{ c.dot }}"></span>
-                        </button>
-                      </sc-for>
-                    </div>
+                    <sc-for list="{{ c.entries }}" as="s" hint-placeholder-count="0">
+                      <div style="flex:none;display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;line-height:1.35;color:#2d2a3a"><span style="flex:none;width:3px;height:12px;border-radius:2px;background:{{ s.color }}"></span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</span></div>
+                    </sc-for>
+                    <sc-for list="{{ c.events }}" as="e" hint-placeholder-count="0">
+                      <div style="flex:none;display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;line-height:1.35;color:#6c6880"><span style="flex:none;width:3px;height:12px;border-radius:2px;background:#cbc6d8"></span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.title }}</span></div>
+                    </sc-for>
                   </div>
                 </sc-for>
               </div>
             </div>
-          </sc-for>
+          </div>
+          
         </div>
       </sc-if>
 
@@ -92,15 +110,15 @@ textarea:focus,input:focus{outline:none}
               <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">
                 <sc-for list="{{ monthCells }}" as="c" hint-placeholder-count="35">
                   <div onClick="{{ c.open }}" style="min-height:0;overflow:hidden;padding:5px 6px;border-top:1px solid #efecf5;border-right:1px solid #efecf5;cursor:pointer;display:flex;flex-direction:column;gap:3px;opacity:{{ c.op }};box-shadow:{{ c.ring }};background:{{ c.bg }}" style-hover="background:#f7f5fb">
-                    <div style="display:flex;align-items:baseline;gap:4px;min-width:0">
-                      <span style="font-family:'Gowun Dodum',sans-serif;font-size:15px;color:{{ c.numColor }}">{{ c.num }}</span>
+                    <div style="flex:none;display:flex;align-items:baseline;gap:4px;min-width:0">
+                      <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:15px;color:{{ c.numColor }}">{{ c.num }}</span>
                       <span style="font-size:10px;color:oklch(0.55 0.16 28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.hol }}</span>
                     </div>
                     <sc-for list="{{ c.entries }}" as="s" hint-placeholder-count="0">
-                      <div style="font-size:10px;padding:2px 6px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:{{ s.soft }};color:{{ s.color }};font-weight:600">{{ s.label }}</div>
+                      <div style="flex:none;display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;line-height:1.35;color:#2d2a3a"><span style="flex:none;width:3px;height:12px;border-radius:2px;background:{{ s.color }}"></span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</span></div>
                     </sc-for>
                     <sc-for list="{{ c.events }}" as="e" hint-placeholder-count="0">
-                      <div style="font-size:10px;color:#6c6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">· {{ e.title }}</div>
+                      <div style="flex:none;display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;line-height:1.35;color:#6c6880"><span style="flex:none;width:3px;height:12px;border-radius:2px;background:#cbc6d8"></span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.title }}</span></div>
                     </sc-for>
                   </div>
                 </sc-for>
@@ -108,18 +126,28 @@ textarea:focus,input:focus{outline:none}
             </div>
           </div>
           <div style="min-height:0;overflow:auto;padding:22px 30px 24px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(to right,rgba(45,42,58,0.05),rgba(45,42,58,0) 36px)">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>이달의 기록</span><span>{{ monthCount }}</span></div>
-            <textarea value="{{ monthMemo }}" onChange="{{ onMonthMemo }}" placeholder="이달의 목표 · 메모" rows="3" style="border:1px solid #efecf5;border-radius:10px;background:#f7f5fb;padding:12px 14px;font-size:14px;line-height:1.6;resize:none"></textarea>
-            <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(140px,1fr);gap:12px">
-              <sc-for list="{{ monthCats }}" as="g" hint-placeholder-count="4">
-                <div style="border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;background:{{ g.soft }}">
-                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:700;color:{{ g.color }}">{{ g.name }}</span><span style="font-size:12px;color:{{ g.color }}">{{ g.count }}</span></div>
-                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="0">
-                    <button onClick="{{ it.open }}" style="display:flex;gap:8px;border:none;background:rgba(255,255,255,0.7);border-radius:7px;padding:7px 9px;cursor:pointer;text-align:left;font-size:12px">
-                      <span style="color:#8a8599;font-variant-numeric:tabular-nums;flex:none">{{ it.date }}</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.title }}</span>
-                    </button>
-                  </sc-for>
-                  <span style="font-size:12px;color:#a5a0b5">{{ g.empty }}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#8a8599"><span>{{ mwHead }}</span><button onClick="{{ openWeek }}" style="border:none;background:none;padding:0;font-size:12px;color:#6c6880;cursor:pointer">주간으로 열기 ›</button></div>
+            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+              <sc-for list="{{ mwDays }}" as="d" hint-placeholder-count="7">
+                <div onClick="{{ d.open }}" style="flex:1 0 auto;min-height:52px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px;padding:8px 6px;border-top:1px solid #efecf5;cursor:pointer;border-radius:6px;opacity:{{ d.op }};background:{{ d.bg }}" style-hover="background:#f7f5fb">
+                  <div>
+                    <div style="display:flex;align-items:baseline;gap:5px"><span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:22px;line-height:1;color:{{ d.numColor }}">{{ d.num }}</span><span style="font-size:11px;color:{{ d.numColor }}">{{ d.dow }}</span></div>
+                    <div style="font-size:10px;color:oklch(0.55 0.16 28);margin-top:3px">{{ d.hol }}</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                    <sc-for list="{{ d.entries }}" as="s" hint-placeholder-count="0">
+                      <div style="flex:none;display:flex;gap:7px;min-width:0;padding:2px 0">
+                        <span style="flex:none;width:3px;border-radius:2px;background:{{ s.color }}"></span>
+                        <div style="min-width:0;display:flex;flex-direction:column;gap:2px">
+                          <div style="display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12px;line-height:1.4"><span style="flex:none;font-weight:700;color:{{ s.color }}">{{ s.cat }}</span><span style="min-width:0;font-weight:600;color:#2d2a3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</span><span style="flex:none;color:#a5a0b5;font-variant-numeric:tabular-nums">{{ s.time }}</span></div>
+                          <div style="font-size:11.5px;line-height:1.5;color:#6c6880;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty">{{ s.sum }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0">
+                      <div style="flex:none;display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;line-height:1.4;color:#6c6880"><span style="flex:none;width:3px;height:13px;border-radius:2px;background:#cbc6d8"></span><span style="flex:none;color:#a5a0b5;font-variant-numeric:tabular-nums">{{ e.t }}</span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.title }}</span></div>
+                    </sc-for>
+                  </div>
                 </div>
               </sc-for>
             </div>
@@ -130,19 +158,25 @@ textarea:focus,input:focus{outline:none}
       <sc-if value="{{ isWeek }}" hint-placeholder-val="{{ false }}">
         <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0">
           <sc-for list="{{ weekPages }}" as="pg" hint-placeholder-count="2">
-            <div style="min-height:0;padding:22px 30px 24px;display:flex;flex-direction:column;gap:10px;background:{{ pg.shade }}">
+            <div style="min-height:0;overflow-y:auto;padding:22px 30px 24px;display:flex;flex-direction:column;gap:10px;background:{{ pg.shade }}">
               <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>{{ pg.head }}</span><span>{{ pg.folio }}</span></div>
               <sc-for list="{{ pg.days }}" as="d" hint-placeholder-count="4">
-                <div onClick="{{ d.open }}" style="flex:1;min-height:0;overflow:hidden;display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #efecf5;cursor:pointer;opacity:{{ d.op }}">
+                <div onClick="{{ d.open }}" style="flex:1 0 auto;display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid #efecf5;cursor:pointer;opacity:{{ d.op }}">
                   <div>
-                    <div style="font-family:'Gowun Dodum',sans-serif;font-size:26px;line-height:1;color:{{ d.numColor }}">{{ d.num }}</div>
+                    <div style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:26px;line-height:1;color:{{ d.numColor }}">{{ d.num }}</div>
                     <div style="font-size:11px;margin-top:4px;color:{{ d.numColor }}">{{ d.dow }}</div>
                     <div style="font-size:10px;color:oklch(0.55 0.16 28);margin-top:2px">{{ d.hol }}</div>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
                     <div style="display:flex;flex-wrap:wrap;gap:5px">
                       <sc-for list="{{ d.entries }}" as="s" hint-placeholder-count="0">
-                        <span style="font-size:12px;padding:3px 9px;border-radius:999px;font-weight:600;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:{{ s.soft }};color:{{ s.color }}">{{ s.cat }} · {{ s.title }}</span>
+                        <div style="flex:1 1 100%;display:flex;gap:7px;min-width:0">
+                          <span style="flex:none;width:3px;border-radius:2px;background:{{ s.color }}"></span>
+                          <div style="min-width:0;display:flex;flex-direction:column;gap:1px">
+                            <div style="display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12px;line-height:1.4"><span style="flex:none;font-weight:700;color:{{ s.color }}">{{ s.cat }}</span><span style="min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.title }}</span><span style="flex:none;color:#a5a0b5;font-variant-numeric:tabular-nums">{{ s.time }}</span></div>
+                            <div style="font-size:11.5px;line-height:1.5;color:#6c6880;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ s.sum }}</div>
+                          </div>
+                        </div>
                       </sc-for>
                     </div>
                     <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0">
@@ -168,21 +202,27 @@ textarea:focus,input:focus{outline:none}
           <div style="grid-area:1 / 1 / 4 / 2;background:linear-gradient(to left,rgba(45,42,58,0.05),rgba(45,42,58,0) 36px)"></div>
           <div style="grid-area:1 / 2 / 4 / 3;background:linear-gradient(to right,rgba(45,42,58,0.05),rgba(45,42,58,0) 36px)"></div>
           <div style="grid-area:1 / 1 / 2 / 2;margin:22px 30px 0;display:flex;flex-direction:column;gap:12px;position:relative;z-index:1">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#8a8599"><span>{{ dayHead }}</span><span>{{ dayFolio }}</span></div>
-            <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
-              <span style="font-family:'Gowun Dodum',sans-serif;font-size:44px;line-height:1;color:{{ dayColor }}">{{ dayNum }}</span>
-              <div style="padding-bottom:4px"><div style="font-size:15px;font-weight:600;color:{{ dayColor }}">{{ dayDow }}</div><div style="font-size:12px;color:#8a8599">{{ dayMeta }}</div></div>
-              <div style="margin-left:auto;display:flex;gap:6px;align-items:center;padding-bottom:4px">
-                <span style="font-size:12px;color:#8a8599">{{ dayNotionStatus }}</span>
-                <button onClick="{{ syncDay }}" style="border:1px solid #d9d4e6;background:#ffffff;border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer">지금 동기화</button>
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-height:72px">
+              <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:700;letter-spacing:-0.04em;font-size:58px;line-height:1;font-variant-numeric:tabular-nums;color:{{ dayColor }}">{{ dayNum }}</span>
+              <span style="width:1px;height:44px;background:#e6e2ef"></span>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em;color:{{ dayColor }}">{{ dayDow }}</span>
+                <span style="font-size:12px;color:#8a8599">{{ dayYm }}</span>
+              </div>
+              <sc-if value="{{ hasHol }}" hint-placeholder-val="{{ false }}">
+                <span style="align-self:center;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:oklch(0.95 0.025 28);color:oklch(0.5 0.14 28)">{{ dayHol }}</span>
+              </sc-if>
+              <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <button onClick="{{ syncDay }}" style="border:1px solid #d9d4e6;background:#ffffff;border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer">지금 동기화</button>
+                <span style="font-size:11px;color:#8a8599">{{ dayNotionStatus }}</span>
               </div>
             </div>
           </div>
           <div style="grid-area:1 / 2 / 2 / 3;margin:22px 30px 0;display:flex;flex-direction:column;position:relative;z-index:1">
             <div style="border-radius:10px;background:#f7f5fb;padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1;max-height:150px;overflow:auto">
-              <div style="font-size:11px;font-weight:600;color:#8a8599">Google 캘린더</div>
+              <div style="font-size:11px;font-weight:600;color:#8a8599">오늘의 일정</div>
               <sc-for list="{{ dayEvents }}" as="e" hint-placeholder-count="2">
-                <div style="display:flex;gap:10px;font-size:13px"><span style="width:40px;flex:none;color:#8a8599;font-variant-numeric:tabular-nums">{{ e.time }}</span><span style="flex:1;min-width:0">{{ e.title }}</span><span style="font-size:11px;color:{{ e.calColor }}">{{ e.cal }}</span></div>
+                <div style="display:flex;gap:10px;font-size:13px"><span style="width:40px;flex:none;color:#8a8599;font-variant-numeric:tabular-nums">{{ e.time }}</span><span style="flex:1;min-width:0">{{ e.title }}</span></div>
               </sc-for>
               <span style="font-size:12px;color:#a5a0b5">{{ noDayEvents }}</span>
             </div>
@@ -195,7 +235,7 @@ textarea:focus,input:focus{outline:none}
               </sc-if>
               <sc-if value="{{ slot.empty }}" hint-placeholder-val="{{ true }}">
                 <div style="flex:1;border:1.5px dashed #d9d4e6;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
-                  <span style="font-family:'Gowun Dodum',sans-serif;font-size:22px;color:#bab5c9">{{ slot.badge }}</span>
+                  <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:22px;color:#bab5c9">{{ slot.badge }}</span>
                   <span style="font-size:13px;color:#8a8599">목록에서 카테고리를 선택해 삽입하세요</span>
                   <div style="position:relative">
                     <button onClick="{{ slot.toggleMenu }}" style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:9px 16px;font-size:14px;cursor:pointer;display:flex;gap:8px;align-items:center">목록에서 선택 <span style="font-size:9px">▼</span></button>
@@ -236,6 +276,7 @@ textarea:focus,input:focus{outline:none}
                       <button onClick="{{ slot.remove }}" title="항목 삭제" style="border:none;background:none;font-size:17px;color:#8a8599;cursor:pointer;padding:0 2px">×</button>
                     </div>
                   </div>
+                  <div style="flex:none;display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px dashed #e6e2ef"><span style="font-size:12px;color:#8a8599;flex:none">장소</span><input value="{{ slot.place }}" onChange="{{ slot.onPlace }}" placeholder="장소 입력" style="flex:1;min-width:0;border:none;background:transparent;font-size:13px;padding:2px 0"></div>
                   <textarea value="{{ slot.body }}" onChange="{{ slot.onBody }}" placeholder="내용을 입력하세요" style="flex:1;min-height:48px;border:none;background:transparent;resize:none;padding:12px 14px;font-size:14px;line-height:1.7"></textarea>
                   <sc-if value="{{ slot.hasAttach }}" hint-placeholder-val="{{ false }}">
                     <div style="flex:none;max-height:96px;overflow:auto;display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px">
@@ -278,7 +319,7 @@ textarea:focus,input:focus{outline:none}
     <div onClick="{{ closeSettings }}" style="position:fixed;inset:0;z-index:40;background:rgba(45,42,58,0.35);display:flex;align-items:center;justify-content:center;padding:24px">
       <div onClick="{{ stop }}" style="width:min(660px,100%);max-height:90vh;overflow:auto;background:#ffffff;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,0.2)">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:'Gowun Dodum',sans-serif;font-size:22px">설정</span>
+          <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:22px">설정</span>
           <button onClick="{{ closeSettings }}" style="border:none;background:none;font-size:22px;cursor:pointer;color:#8a8599">×</button>
         </div>
         <div style="border-radius:12px;background:#f7f5fb;padding:16px;display:flex;flex-direction:column;gap:8px">
@@ -321,7 +362,7 @@ textarea:focus,input:focus{outline:none}
     <div style="position:fixed;inset:0;z-index:40;background:rgba(45,42,58,0.35);display:flex;align-items:center;justify-content:center;padding:24px">
       <div style="background:#ffffff;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,0.2);width:min(760px,100%)">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-family:'Gowun Dodum',sans-serif;font-size:20px;flex:1">그림 그리기</span>
+          <span style="font-family:'Pretendard Variable',Pretendard,sans-serif;font-weight:600;letter-spacing:-0.02em;font-size:20px;flex:1">그림 그리기</span>
           <sc-for list="{{ pens }}" as="p" hint-placeholder-count="5">
             <button onClick="{{ p.pick }}" style="width:24px;height:24px;border-radius:50%;cursor:pointer;background:{{ p.color }};border:2px solid {{ p.ring }}"></button>
           </sc-for>
@@ -341,14 +382,14 @@ textarea:focus,input:focus{outline:none}
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;weekStart&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;월요일&quot;,&quot;일요일&quot;],&quot;default&quot;:&quot;월요일&quot;,&quot;tsType&quot;:&quot;'월요일'|'일요일'&quot;},&quot;showHolidays&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;weekStart&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;월요일&quot;,&quot;일요일&quot;],&quot;default&quot;:&quot;일요일&quot;,&quot;tsType&quot;:&quot;'월요일'|'일요일'&quot;},&quot;showHolidays&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;deskColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#e9e5de&quot;,&quot;#dfe4dc&quot;,&quot;#e0e5ea&quot;,&quot;#ebe2d4&quot;],&quot;default&quot;:&quot;#e9e5de&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
 class Component extends DCLogic {
   KEY = 'diary.perpetual.v2';
   CATS = [
-    { id: 'ipdae', name: '입대의', desc: '입주자대표회의 안건·회의', color: 'oklch(0.52 0.13 255)', soft: 'oklch(0.93 0.045 255)' },
-    { id: 'office', name: '관리사무소', desc: '시설·민원·행정 업무', color: 'oklch(0.5 0.12 160)', soft: 'oklch(0.93 0.045 160)' },
-    { id: 'consult', name: '컨설팅', desc: '외부 자문·미팅', color: 'oklch(0.54 0.13 55)', soft: 'oklch(0.94 0.045 65)' },
-    { id: 'daily', name: '일상', desc: '개인 기록·메모', color: 'oklch(0.53 0.14 345)', soft: 'oklch(0.93 0.045 345)' }
+    { id: 'ipdae', name: '입대의', desc: '입주자대표회의 안건·회의', color: 'oklch(0.48 0.07 215)', soft: 'oklch(0.94 0.022 215)' },
+    { id: 'office', name: '관리사무소', desc: '시설·민원·행정 업무', color: 'oklch(0.5 0.075 125)', soft: 'oklch(0.94 0.025 120)' },
+    { id: 'consult', name: '컨설팅', desc: '외부 자문·미팅', color: 'oklch(0.53 0.08 40)', soft: 'oklch(0.94 0.022 45)' },
+    { id: 'daily', name: '일상', desc: '개인 기록·메모', color: 'oklch(0.5 0.07 305)', soft: 'oklch(0.94 0.022 305)' }
   ];
   LUNAR = { 2026: ['02-17', '05-24', '09-25'], 2027: ['02-06', '05-13', '09-15'], 2028: ['01-26', '05-02', '10-03'], 2029: ['02-13', '05-20', '09-22'], 2030: ['02-03', '05-09', '09-12'] };
   ELECT = { '2026-06-03': '지방선거일', '2028-04-12': '국회의원선거일', '2030-06-12': '지방선거일' };
@@ -513,7 +554,7 @@ class Component extends DCLogic {
   }
   async pushPending(errs) {
     const items = [], ob = this.state.outbox || { notionDel: [], calDel: [] };
-    Object.entries(this.D).forEach(([k, arr]) => { if (this.locked(k)) return; arr.forEach((s, i) => { if (s && s.notion === 'pending') items.push({ id: s.id, v: s.updatedAt || 0, date: k, slot: i + 1, cat: s.cat, catName: this.cat(s.cat).name, title: s.title, body: s.body, time: s.time, cal: !!s.cal, notionId: s.notionId || '', eventId: s.eventId || '', files: (s.files || []).map(f => f.name) }); }); });
+    Object.entries(this.D).forEach(([k, arr]) => { if (this.locked(k)) return; arr.forEach((s, i) => { if (s && s.notion === 'pending') items.push({ id: s.id, v: s.updatedAt || 0, date: k, slot: i + 1, cat: s.cat, catName: this.cat(s.cat).name, title: s.title, body: s.body, time: s.time, place: s.place || '', cal: !!s.cal, notionId: s.notionId || '', eventId: s.eventId || '', files: (s.files || []).map(f => f.name) }); }); });
     const sentDel = ob.notionDel.slice(), sentCal = ob.calDel.slice();
     if (!items.length && !sentDel.length && !sentCal.length) return;
     const chunks = []; for (let n = 0; n < items.length; n += 8) chunks.push(items.slice(n, n + 8)); if (!chunks.length) chunks.push([]);
@@ -553,7 +594,7 @@ class Component extends DCLogic {
     const setAt = (k, i, v) => { const a = [0, 1, 2, 3].map(j => (data[k] || [])[j] || null); a[i] = v; if (a.every(x => !x)) delete data[k]; else data[k] = a; changed = true; };
     list.forEach(n => {
       if (!n.date || this.locked(n.date)) return;
-      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', nEdited: n.edited };
+      const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', place: n.place || '', nEdited: n.edited };
       if (typeof n.body === 'string') fields.body = n.body;
       const at = idx[n.id];
       if (at) {
@@ -580,6 +621,36 @@ class Component extends DCLogic {
     if (s.notionId || s.eventId) this.setState(st => ({ outbox: { notionDel: s.notionId ? [...st.outbox.notionDel, s.notionId] : st.outbox.notionDel, calDel: s.eventId ? [...st.outbox.calDel, s.eventId] : st.outbox.calDel } }), () => this.writeMeta());
     this.setSlot(k, i, null);
   }
+  normT(t) { return String(t || '').replace(/[\s\[\]\(\)\{\}<>.,·:;'"`~!?\-_/]/g, '').toLowerCase(); }
+  evTime(e) {
+    if (e.time && e.time !== '종일') return { time: e.time, title: e.title };
+    const m = String(e.title || '').match(/(?:^|\D)([01]?\d|2[0-3]):?([0-5]\d)(?!\d)/);
+    if (!m) return { time: '', title: e.title };
+    return { time: `${String(m[1]).padStart(2, '0')}:${m[2]}`, title: String(e.title).replace(m[0].replace(/^\D/, ''), '').trim() };
+  }
+  tokens(t) { return String(t || '').split(/[\s\[\]\(\)\{\}<>.,·:;'"`~!?\-_/]+/).map(x => x.replace(/\d+(월|일|시|분)?$/, '')).filter(x => /[가-힣]{2,}/.test(x) && !/^(\d+월|\d+일)$/.test(x)); }
+  sumText(b) { return String(b || '').split(/\r?\n/).map(l => l.replace(/^\s*([-*•]|\d+[.)]|#{1,3})\s*/, '').trim()).filter(Boolean).join(' · '); }
+  mins(t) { const m = /^(\d{2}):(\d{2})$/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
+  dayMerged(d, kk) {
+    const seen = new Set(), entries = [];
+    this.filled(kk).forEach(s => {
+      const label = (s.title || this.cat(s.cat).name).trim(), n = this.normT(label);
+      if (seen.has(n)) return; seen.add(n);
+      entries.push({ label, cat: this.cat(s.cat).name, color: this.cat(s.cat).color, time: s.time || '', sum: this.sumText(s.body), place: s.place || '', n, tk: this.tokens(label) });
+    });
+    const dup = ev => {
+      const { time, title } = this.evTime(ev), n = this.normT(title), tk = this.tokens(title), em = this.mins(time);
+      if (!n) return true;
+      return entries.some(x => {
+        if (x.n === n || (x.n.length >= 2 && n.includes(x.n)) || (n.length >= 2 && x.n.includes(n))) return true;
+        const xm = this.mins(x.time), near = em === null || xm === null || Math.abs(em - xm) <= 60;
+        if (em !== null && xm !== null && em === xm) return true;
+        return near && tk.some(t => x.tk.some(u => u === t || (t.length >= 3 && u.includes(t)) || (u.length >= 3 && t.includes(u))));
+      });
+    };
+    const events = this.events(d).filter(e => !e.mine && !dup(e)).slice(0, 3);
+    return { entries, events };
+  }
   get D() { return this._data || this.state.data || {}; }
   todayKey() { const t = new Date(); return this.key(t < this.parse(this.MIN) ? this.parse(this.MIN) : t); }
   seed(t) {
@@ -598,7 +669,7 @@ class Component extends DCLogic {
   parse = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
   add = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
   dot(k) { const [y, m, d] = k.split('-'); return `${y}.${m}.${d}`; }
-  ws() { return this.props.weekStart === '일요일' ? 0 : 1; }
+  ws() { return (this.props.weekStart || '일요일') === '일요일' ? 0 : 1; }
   sow(dt) { return this.add(dt, -((dt.getDay() - this.ws() + 7) % 7)); }
   holidays(y) {
     if (this._hc[y]) return this._hc[y];
@@ -812,18 +883,25 @@ class Component extends DCLogic {
           return { d: inM ? d.getDate() : '', op: lk ? 0.3 : 1, color: isSel ? '#ffffff' : this.numColor(d, kk), bg: isSel ? '#2d2a3a' : 'transparent', dot: f.length ? this.cat(f[0].cat).color : 'transparent', open: () => inM && this.go('day', kk) };
         });
         const cnt = this.monthEntries(y, m).reduce((n, [, a]) => n + a.filter(Boolean).length, 0);
-        return { label: `${m + 1}월`, count: cnt ? `${cnt}개` : '', cells, open: () => this.go('month', this.key(this.lo(new Date(y, m, 1)))) };
+        return { label: `${m + 1}월`, count: cnt ? `${cnt}개` : '', cells, bg: m === dt.getMonth() ? '#f2f0f8' : 'transparent', open: () => this.persistUI({ sel: this.key(this.lo(new Date(y, m, 1))), menu: null }) };
       };
-      v.yearPages = [{ head: `${y} · 상반기`, folio: '1', shade: L, months: [0, 1, 2, 3, 4, 5].map(mini) }, { head: `${y} · 하반기`, folio: '2', shade: R, months: [6, 7, 8, 9, 10, 11].map(mini) }];
+      v.months = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(mini); v.yearHead = `${y}`;
     }
-    if (S.view === 'month') {
+    if (S.view === 'month' || S.view === 'year') {
+      v.openMonth = () => this.go('month');
       const m = dt.getMonth(), first = new Date(y, m, 1), st = this.sow(first), dim = new Date(y, m + 1, 0).getDate();
       const rows = Math.ceil(((first - st) / 864e5 + dim) / 7);
       v.monthCells = Array.from({ length: rows * 7 }, (_, i) => {
         const d = this.add(st, i), kk = this.key(d), inM = d.getMonth() === m, lk = this.locked(kk);
         return { num: d.getDate(), numColor: this.numColor(d, kk), hol: this.hol(kk), op: !inM ? 0.3 : lk ? 0.4 : 1, ring: kk === k ? 'inset 0 0 0 2px #2d2a3a' : 'none', bg: lk && inM ? '#faf9fc' : '#ffffff',
-          entries: this.filled(kk).map(s => ({ label: s.title || this.cat(s.cat).name, color: this.cat(s.cat).color, soft: this.cat(s.cat).soft })),
-          events: this.events(d).filter(e => !e.mine).slice(0, 2), open: () => this.go('day', kk) };
+          ...this.dayMerged(d, kk), open: () => S.view === 'month' && kk !== k ? this.persistUI({ sel: kk, menu: null }) : this.go('day', kk) };
+      });
+      v.openWeek = () => this.go('week');
+      v.mwHead = `${wk}주차 · ${w0.getMonth() + 1}.${w0.getDate()} – ${w6.getMonth() + 1}.${w6.getDate()}`;
+      v.mwDays = Array.from({ length: 7 }, (_, i) => {
+        const d = this.add(w0, i), kk = this.key(d), mg = this.dayMerged(d, kk);
+        return { num: d.getDate(), dow: this.DOW[d.getDay()], numColor: this.numColor(d, kk), hol: this.hol(kk), op: this.locked(kk) ? 0.4 : 1, bg: kk === k ? '#f7f5fb' : 'transparent',
+          entries: mg.entries, events: mg.events.map(e => { const x = this.evTime(e); return { ...e, title: x.title || e.title, t: x.time }; }), open: () => this.go('day', kk) };
       });
       const ents = this.monthEntries(y, m).sort(([a], [b]) => a.localeCompare(b));
       const total = ents.reduce((n, [, a]) => n + a.filter(Boolean).length, 0);
@@ -839,7 +917,7 @@ class Component extends DCLogic {
       const day = i => {
         const d = this.add(w0, i), kk = this.key(d), lk = this.locked(kk), ev = this.events(d).filter(e => !e.mine), en = this.filled(kk);
         return { dow: this.DOW[d.getDay()] + '요일', num: d.getDate(), numColor: this.numColor(d, kk), hol: this.hol(kk), op: lk ? 0.35 : 1, events: ev,
-          entries: en.map(s => ({ cat: this.cat(s.cat).name, color: this.cat(s.cat).color, soft: this.cat(s.cat).soft, title: s.title || '(제목 없음)' })),
+          entries: en.map(s => ({ cat: this.cat(s.cat).name, color: this.cat(s.cat).color, soft: this.cat(s.cat).soft, title: s.title || '(제목 없음)', time: s.time || '', sum: this.sumText(s.body) })),
           note: lk ? '시작일 이전' : (ev.length || en.length) ? '' : '', open: () => this.go('day', kk) };
       };
       const r = `${w0.getMonth() + 1}.${w0.getDate()} – ${w6.getMonth() + 1}.${w6.getDate()}`;
@@ -850,7 +928,7 @@ class Component extends DCLogic {
       const lk = this.locked(k), h = this.hol(k);
       v.dayHead = `${y} · ${dt.getMonth() + 1}월 · ${wk}주차`; v.dayFolio = lk ? '시작일 이전 · 연동 안 함' : '';
       v.dayNum = dt.getDate(); v.dayDow = this.DOW[dt.getDay()] + '요일'; v.dayColor = this.numColor(dt, k);
-      v.dayMeta = [`${dt.getMonth() + 1}월`, h].filter(Boolean).join(' · ');
+      v.dayYm = `${y}년 ${dt.getMonth() + 1}월` + (lk ? ' · 시작일 이전' : ''); v.hasHol = !!h; v.dayHol = h;
       const AREAS = [['2 / 1 / 3 / 2', '14px 30px 7px'], ['3 / 1 / 4 / 2', '7px 30px 26px'], ['2 / 2 / 3 / 3', '14px 30px 7px'], ['3 / 2 / 4 / 3', '7px 30px 26px']];
       v.slots = this.slotsFor(k).map((s, i) => {
         const base = { n: i + 1, badge: `0${i + 1}`, z: S.menu === i ? 25 : 1, area: AREAS[i][0], margin: AREAS[i][1], menuOpen: S.menu === i, mx: ((S.mpos || {}).left || 0) + 'px', my: ((S.mpos || {}).top || 0) + 'px',
@@ -863,6 +941,7 @@ class Component extends DCLogic {
         return { ...base, filled: true, catName: c.name, color: c.color, soft: c.soft, title: s.title, body: s.body, time: s.time || '',
           cats: this.CATS.map(cc => ({ ...cc, pick: () => { this.updateAt(k, i, { cat: cc.id }); this.setState({ menu: null }); } })),
           onTitle: e => this.updateAt(k, i, { title: e.target.value }), onBody: e => this.updateAt(k, i, { body: e.target.value }), onTime: e => this.updateAt(k, i, { time: e.target.value }),
+          place: s.place || '', onPlace: e => this.updateAt(k, i, { place: e.target.value }),
           onFile: e => { this.addFiles(k, i, e.target.files); e.target.value = ''; },
           onDragOver: e => e.preventDefault(), onDrop: e => { e.preventDefault(); this.addFiles(k, i, e.dataTransfer.files); },
           images: files.map((f, j) => ({ ...f, bg: `url(${f.url})`, remove: rm(j) })).filter(isImg),
@@ -877,7 +956,7 @@ class Component extends DCLogic {
           notionBg: nSync || !gas ? 'rgba(255,255,255,0.75)' : '#2d2a3a', notionColor: nSync || !gas ? '#6c6880' : '#f8f7fb',
           syncNotion: () => this.sync(true) };
       });
-      v.dayEvents = this.events(dt);
+      v.dayEvents = this.events(dt).map(e => { const x = this.evTime(e); return { ...e, title: x.title || e.title, time: x.time || e.time }; });
       v.noDayEvents = lk ? '시작일 이전 — 가져오지 않음' : v.dayEvents.length ? '' : gas ? '일정이 없습니다' : '연동 전 — 설정에서 연결하세요';
       const f = this.filled(k), p = f.filter(s => s.notion === 'pending').length;
       v.dayNotionStatus = lk ? '' : !f.length ? '' : !gas ? '노트북에만 저장' : p ? `노션 대기 ${p}` : '노션 ✓ 동기화됨';
@@ -924,6 +1003,7 @@ class Component extends DCLogic {
         }, 'image/png');
         this.setState({ sketch: null }); this.flash('그림을 첨부했습니다');
       },
+      deskBg: this.props.deskColor || '#e9e5de',
       hasToast: !!S.toast, toast: S.toast
     };
   }
