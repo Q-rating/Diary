@@ -1,14 +1,33 @@
 /**
- * 만년 다이어리 ↔ Google 캘린더 · Notion 연동 (Google Apps Script)  — v4
+ * 만년 다이어리 ↔ Google 캘린더 · Notion 연동 (Google Apps Script)  — v7
  * 스크립트 속성: DIARY_KEY(필수), NOTION_TOKEN, NOTION_DB(노션 연동 시)
  * 노션 DB 열: 제목(title, 이름 무관), 날짜(date), 카테고리(select), 본문(text = 1~2줄 요약), 시간(text), 장소(text), 슬롯(number, 선택), 첨부(text, 선택)
  * 전체 본문은 각 노션 페이지 안(본문 블록)에 저장됩니다.
  */
-var VERSION = '4';
+var VERSION = '7';
 var PROPS = PropertiesService.getScriptProperties();
 var NOTION_VERSION = '2022-06-28';
-var COL = { date: '날짜', cat: '카테고리', body: '본문', time: '시간', place: '장소', slot: '슬롯', files: '첨부' };
+var BASE = { date: '날짜', cat: '카테고리', body: '본문', time: '시간', place: '장소', id: '다이어리ID', slot: '슬롯', files: '첨부' };
 
+var COL = JSON.parse(JSON.stringify(BASE));
+function applyCols_(c) { Object.keys(c || {}).forEach(function (k) { COL[k] = c[k]; }); }
+function val_(p) {
+  if (!p) return '';
+  if (p.rich_text || p.title) return text_(p);
+  if (p.type === 'select') return p.select ? p.select.name : '';
+  if (p.type === 'multi_select') return (p.multi_select || []).map(function (o) { return o.name; }).join(', ');
+  if (p.type === 'place' && p.place) return p.place.name || p.place.address || '';
+  if (p.type === 'url') return p.url || '';
+  return '';
+}
+function put_(type, v) {
+  v = String(v || '');
+  if (type === 'rich_text') return { rich_text: v ? [{ text: { content: v.slice(0, 2000) } }] : [] };
+  if (type === 'select') return { select: v ? { name: v.replace(/,/g, ' ').slice(0, 100) } : null };
+  if (type === 'multi_select') return { multi_select: v ? [{ name: v.replace(/,/g, ' ').slice(0, 100) }] : [] };
+  if (type === 'url') return { url: v || null };
+  return null;
+}
 function setup() {
   CalendarApp.getDefaultCalendar().getName();
   if (!PROPS.getProperty('DIARY_KEY')) throw new Error('스크립트 속성에 DIARY_KEY를 추가하세요');
@@ -23,7 +42,7 @@ function doPost(e) {
   try {
     var req = JSON.parse(e.postData.contents);
     if (!req.key || req.key !== PROPS.getProperty('DIARY_KEY')) return json_({ ok: false, error: '키가 일치하지 않습니다' });
-    var fn = { ping: ping_, pull: pull_, push: push_ }[req.action];
+    var fn = { ping: ping_, pull: pull_, push: push_, reconcile: reconcile_ }[req.action];
     if (!fn) return json_({ ok: false, error: '알 수 없는 요청' });
     var lock = LockService.getScriptLock(); lock.waitLock(25000);
     try { return json_(fn(req)); } finally { lock.releaseLock(); }
@@ -38,7 +57,14 @@ function day_(s) { return Utilities.parseDate(s, tz_(), 'yyyy-MM-dd'); }
 
 function ping_() {
   var out = { ok: true, version: VERSION, calendar: CalendarApp.getDefaultCalendar().getName(), notion: hasNotion_(), timezone: tz_() };
-  if (out.notion) { try { CacheService.getScriptCache().remove('schema'); notionSchema_(); } catch (e) { out.notionError = String(e.message || e); } }
+  if (out.notion) {
+    try {
+      CacheService.getScriptCache().remove('schema'); var s = notionSchema_(), pc = col_(s, 'place'), t = pc && s.props[pc];
+      out.columns = s.props;
+      if (!pc) out.warn = "'장소' 열이 없습니다";
+      else if (['rich_text', 'select', 'multi_select'].indexOf(t) < 0) out.warn = "'장소' 열 유형(" + t + ')은 연동할 수 없습니다 — 텍스트로 바꿔주세요';
+    } catch (e) { out.notionError = String(e.message || e); }
+  }
   return out;
 }
 
@@ -58,7 +84,7 @@ function pull_(req) {
       }
     });
   });
-  var out = { ok: true, events: events, notion: null, deleted: [] };
+  var out = { ok: true, version: VERSION, events: events, notion: null, deleted: [] };
   if (hasNotion_()) {
     try { var r = notionPull_(req.from, req.known || {}); out.notion = r.items; out.deleted = r.deleted; }
     catch (e) { out.notionError = String(e.message || e); }
@@ -132,13 +158,30 @@ function notion_(method, path, body) {
 }
 function notionSchema_() {
   var cache = CacheService.getScriptCache(), hit = cache.get('schema');
-  if (hit) return JSON.parse(hit);
+  if (hit) { var hs = JSON.parse(hit); applyCols_(hs.col); return hs; }
   var db = notion_('get', '/databases/' + PROPS.getProperty('NOTION_DB')), props = {}, title = null;
+  var want = {}, ren = {}; Object.keys(COL).forEach(function (k) { want[COL[k]] = 1; });
+  Object.keys(db.properties).forEach(function (n) { var t = n.replace(/\s+/g, ''); if (t !== n && want[t] && !db.properties[t]) ren[n] = { name: t }; });
+  if (Object.keys(ren).length) { notion_('patch', '/databases/' + PROPS.getProperty('NOTION_DB'), { properties: ren }); db = notion_('get', '/databases/' + PROPS.getProperty('NOTION_DB')); }
   Object.keys(db.properties).forEach(function (n) { props[n] = db.properties[n].type; if (props[n] === 'title') title = n; });
+  var norm = function (x) { return String(x).replace(/\s+/g, '').toLowerCase(); }, col = {};
+  Object.keys(BASE).forEach(function (k) { col[k] = BASE[k]; Object.keys(props).forEach(function (n) { if (norm(n) === norm(BASE[k])) col[k] = n; }); });
+  applyCols_(col);
+  var add = {};
+  if (!props[COL.id]) { add[COL.id] = { rich_text: {} }; props[COL.id] = 'rich_text'; }
+  if (!props[COL.slot]) { add[COL.slot] = { number: {} }; props[COL.slot] = 'number'; }
+  if (Object.keys(add).length) notion_('patch', '/databases/' + PROPS.getProperty('NOTION_DB'), { properties: add });
   if (props[COL.date] !== 'date') throw new Error("노션 '" + COL.date + "' 열이 없거나 날짜 유형이 아닙니다");
   if (props[COL.cat] && props[COL.cat] !== 'select' && props[COL.cat] !== 'multi_select') throw new Error("노션 '" + COL.cat + "' 열은 선택 유형이어야 합니다");
-  var s = { props: props, title: title }; cache.put('schema', JSON.stringify(s), 300); return s;
+  var s = { props: props, title: title, col: col }; cache.put('schema', JSON.stringify(s), 300); return s;
 }
+function col_(s, key) {
+  var want = COL[key], names = Object.keys(s.props);
+  for (var i = 0; i < names.length; i++) if (names[i].trim() === want) return names[i];
+  for (var j = 0; j < names.length; j++) if (names[j].replace(/\s/g, '').indexOf(want) >= 0) return names[j];
+  return null;
+}
+function prop_(p, s, key) { var n = col_(s, key); return n ? p[n] : null; }
 function text_(p) { return p ? (p.rich_text || p.title || []).map(function (t) { return t.plain_text; }).join('') : ''; }
 function summary_(body) {
   var lines = String(body || '').split(/\r?\n/).map(function (l) { return l.replace(/^\s*([-*•]|\d+[.)]|#{1,3})\s*/, '').trim(); }).filter(function (l) { return l; });
@@ -186,11 +229,12 @@ function pageItem_(s, pg, known) {
   var p = pg.properties, d = p[COL.date] && p[COL.date].date;
   if (!d || !d.start) return null;
   var c = p[COL.cat], cat = c ? (c.select ? c.select.name : (c.multi_select && c.multi_select[0] ? c.multi_select[0].name : '')) : '';
-  var time = text_(p[COL.time]); if (!time && d.start.length > 10) time = d.start.slice(11, 16);
+  var time = text_(prop_(p, s, 'time')); if (!time && d.start.length > 10) time = d.start.slice(11, 16);
+  var pl = prop_(p, s, 'place'), place = pl ? (pl.select ? pl.select.name : pl.multi_select ? pl.multi_select.map(function (x) { return x.name; }).join(', ') : pl.place ? (pl.place.name || pl.place.address || '') : text_(pl)) : '';
   var body = null;
-  if (known[pg.id] !== pg.last_edited_time) body = readBody_(pg.id) || text_(p[COL.body]);
-  return { id: pg.id, date: d.start.slice(0, 10), title: text_(p[s.title]), cat: cat, body: body, time: time, place: text_(p[COL.place]),
-    slot: p[COL.slot] ? p[COL.slot].number : null, edited: pg.last_edited_time };
+  if (known[pg.id] !== pg.last_edited_time) { body = readBody_(pg.id); if (!body) body = null; }
+  return { id: pg.id, date: d.start.slice(0, 10), title: text_(p[s.title]), cat: cat, body: body, time: time, place: place, did: text_(p[COL.id]),
+    slot: p[COL.slot] ? p[COL.slot].number : null, edited: pg.last_edited_time, created: pg.created_time };
 }
 function notionPull_(from, known) {
   var s = notionSchema_(), items = [], seen = {}, deleted = [], cursor = null;
@@ -209,6 +253,7 @@ function notionPull_(from, known) {
       else { var it = pageItem_(s, pg, known); if (it) items.push(it); }
     } catch (e) { if (/Could not find|object_not_found/i.test(String(e))) deleted.push(id); }
   });
+  items.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.slot || 99) - (b.slot || 99) || (a.created < b.created ? -1 : 1); });
   return { items: items, deleted: deleted };
 }
 function notionProps_(s, it) {
@@ -220,19 +265,38 @@ function notionProps_(s, it) {
   else if (has(COL.cat, 'multi_select')) P[COL.cat] = { multi_select: [{ name: it.catName }] };
   if (has(COL.body, 'rich_text')) P[COL.body] = { rich_text: rt(summary_(it.body)) };
   if (has(COL.time, 'rich_text')) P[COL.time] = { rich_text: rt(it.time) };
-  if (has(COL.place, 'rich_text')) P[COL.place] = { rich_text: rt(it.place) };
+  if (has(COL.id, 'rich_text')) P[COL.id] = { rich_text: rt(it.id) };
+  var pc = col_(s, 'place'), pt = pc && s.props[pc];
+  if (pt === 'rich_text') P[pc] = { rich_text: rt(it.place) };
+  else if (pt === 'select') P[pc] = { select: it.place ? { name: String(it.place).replace(/,/g, ' ').slice(0, 100) } : null };
+  else if (pt === 'multi_select') P[pc] = { multi_select: it.place ? [{ name: String(it.place).replace(/,/g, ' ').slice(0, 100) }] : [] };
+  else if (pt === 'title' || !pc) {}
+  var tc = col_(s, 'time'); if (tc && tc !== COL.time && s.props[tc] === 'rich_text') P[tc] = { rich_text: rt(it.time) };
   if (has(COL.slot, 'number')) P[COL.slot] = { number: it.slot };
-  if (has(COL.files, 'rich_text')) P[COL.files] = { rich_text: rt((it.files || []).join(', ')) };
+  if (has(COL.files, 'rich_text') && Array.isArray(it.files)) P[COL.files] = { rich_text: rt((it.files || []).join(', ')) };
   return P;
 }
+function queryAll_(body) {
+  var out = [], cursor = null;
+  do {
+    var b = JSON.parse(JSON.stringify(body)); b.page_size = 100; if (cursor) b.start_cursor = cursor;
+    var r = notion_('post', '/databases/' + PROPS.getProperty('NOTION_DB') + '/query', b);
+    out = out.concat(r.results); cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return out;
+}
+function findById_(id) { return id ? queryAll_({ filter: { property: COL.id, rich_text: { equals: id } } }).map(function (p) { return p.id; }) : []; }
 function findTwin_(s, it) {
   var title = it.title || it.catName;
-  var r = notion_('post', '/databases/' + PROPS.getProperty('NOTION_DB') + '/query', { page_size: 5,
-    filter: { and: [{ property: COL.date, date: { equals: it.date } }, { property: s.title, title: { equals: title } }] } });
-  return r.results.length ? r.results[0].id : '';
+  var r = queryAll_({ filter: { and: [{ property: COL.date, date: { equals: it.date } }, { property: s.title, title: { equals: title } }, { property: COL.id, rich_text: { is_empty: true } }] } });
+  return r.length ? r[0].id : '';
 }
 function notionUpsert_(s, it) {
-  var properties = notionProps_(s, it), id = it.notionId || findTwin_(s, it);
+  var properties = notionProps_(s, it), ids = findById_(it.id), id = '';
+  if (ids.length) {
+    id = ids.indexOf(it.notionId) >= 0 ? it.notionId : ids[0];
+    ids.forEach(function (x) { if (x !== id) { try { notion_('patch', '/pages/' + x, { archived: true }); } catch (e) {} } });
+  } else id = it.notionId || findTwin_(s, it);
   if (id) {
     var ok = false;
     try { notion_('patch', '/pages/' + id, { properties: properties, archived: false }); ok = true; } catch (e) { if (!/Could not find|object_not_found|archived/i.test(String(e))) throw e; }
@@ -242,4 +306,15 @@ function notionUpsert_(s, it) {
   id = notion_('post', '/pages', { parent: { database_id: PROPS.getProperty('NOTION_DB') }, properties: properties, children: blocks.slice(0, 100) }).id;
   for (var j = 100; j < blocks.length; j += 100) notion_('patch', '/blocks/' + id + '/children', { children: blocks.slice(j, j + 100) });
   return id;
+}
+/* 다이어리에 없는 행 정리: 다이어리ID가 현재 목록에 없거나, 이 연동이 만든 ID 없는 예전 행 → 휴지통 */
+function reconcile_(req) {
+  if (!hasNotion_()) return { ok: true, archived: 0 };
+  var s = notionSchema_(), keep = {}, bot = notion_('get', '/users/me').id, n = 0;
+  (req.ids || []).forEach(function (x) { keep[x] = 1; });
+  queryAll_({ filter: { property: COL.date, date: { on_or_after: req.from } } }).forEach(function (pg) {
+    var did = text_(pg.properties[COL.id]), mine = pg.created_by && pg.created_by.id === bot;
+    if ((did && !keep[did]) || (!did && mine)) { try { notion_('patch', '/pages/' + pg.id, { archived: true }); n++; } catch (e) {} }
+  });
+  return { ok: true, archived: n };
 }

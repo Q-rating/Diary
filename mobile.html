@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="view-switch.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="manifest" href="manifest-mobile.webmanifest">
+<meta name="theme-color" content="#f4f1ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="다이어리">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+html,body{margin:0;background:#f4f1ec;color:#2d2a3a;font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+a{color:#2d2a3a}a:hover{color:oklch(0.48 0.07 215)}
+input,textarea,button{font-family:inherit;color:inherit}
+textarea:focus,input:focus{outline:none}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#f4f1ec">
+  <header style="position:sticky;top:0;z-index:10;background:rgba(244,241,236,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e6e1d8">
+    <button onClick="{{ prev }}" style="width:40px;height:40px;flex:none;border-radius:50%;border:1px solid #ddd6ca;background:#ffffff;font-size:18px;cursor:pointer">‹</button>
+    <div style="min-width:0;display:flex;flex-direction:column;align-items:center;padding:0 4px">
+      <span style="font-size:18px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap">{{ title }}</span>
+      <span style="font-size:11px;color:#8a8478;white-space:nowrap">{{ sub }}</span>
+    </div>
+    <button onClick="{{ next }}" style="width:40px;height:40px;flex:none;border-radius:50%;border:1px solid #ddd6ca;background:#ffffff;font-size:18px;cursor:pointer">›</button>
+    <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:2px;background:rgba(45,42,58,0.07);border-radius:999px;padding:3px;margin-left:8px">
+        <sc-for list="{{ leftTabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.go }}" style="border:none;cursor:pointer;padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;background:{{ t.bg }};color:{{ t.color }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <button onClick="{{ goToday }}" style="height:36px;border:1px solid #ddd6ca;background:#ffffff;border-radius:999px;padding:0 12px;font-size:13px;cursor:pointer">오늘</button>
+      <button onClick="{{ syncNow }}" title="{{ syncText }}" style="height:36px;display:flex;align-items:center;gap:6px;border:none;background:transparent;padding:0 4px;font-size:12px;color:#6c6880;cursor:pointer"><span style="width:9px;height:9px;border-radius:50%;background:{{ syncDot }}"></span><span style="white-space:nowrap">{{ syncShort }}</span></button>
+      <button onClick="{{ openSettings }}" style="height:36px;border:1px solid #ddd6ca;background:#ffffff;border-radius:999px;padding:0 12px;font-size:13px;cursor:pointer">설정</button>
+    </div>
+  </header>
+
+  <main style="flex:1;display:grid;grid-template-columns:{{ cols }};gap:16px;align-items:start;padding:14px 14px {{ padB }};max-width:1180px;width:100%;box-sizing:border-box;margin:0 auto">
+    <sc-if value="{{ showMonth }}" hint-placeholder-val="{{ false }}">
+      <section style="background:#ffffff;border-radius:18px;padding:12px 10px 10px;box-shadow:0 1px 2px rgba(45,42,58,0.05)">
+        <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;padding-bottom:6px">
+          <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7"><span style="font-size:11px;font-weight:600;color:{{ w.color }}">{{ w.label }}</span></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:2px">
+          <sc-for list="{{ cells }}" as="c" hint-placeholder-count="35">
+            <button onClick="{{ c.open }}" style="min-width:0;min-height:{{ cellH }};border:none;background:{{ c.bg }};border-radius:12px;padding:6px 2px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;opacity:{{ c.op }}">
+              <span style="width:28px;height:28px;line-height:28px;border-radius:50%;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:{{ c.numColor }};background:{{ c.numBg }};box-shadow:{{ c.ring }}">{{ c.num }}</span>
+              <div style="display:flex;flex-direction:column;gap:2px;align-items:center;width:100%">
+                <sc-for list="{{ c.bars }}" as="b" hint-placeholder-count="0"><span style="width:60%;max-width:22px;height:3px;border-radius:2px;background:{{ b.color }}"></span></sc-for>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ showWeek }}" hint-placeholder-val="{{ false }}">
+      <section style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ weekDays }}" as="d" hint-placeholder-count="7">
+          <button onClick="{{ d.open }}" style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px;text-align:left;border:none;background:#ffffff;border-radius:16px;padding:12px 14px;cursor:pointer;box-shadow:{{ d.ring }};opacity:{{ d.op }}">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:24px;font-weight:700;letter-spacing:-0.03em;line-height:1;color:{{ d.numColor }}">{{ d.num }}</span>
+              <span style="font-size:12px;color:{{ d.numColor }}">{{ d.dow }}</span>
+              <span style="font-size:10px;color:oklch(0.55 0.16 28)">{{ d.hol }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+              <sc-for list="{{ d.entries }}" as="s" hint-placeholder-count="0">
+                <div style="display:flex;gap:8px;min-width:0">
+                  <span style="flex:none;width:3px;border-radius:2px;background:{{ s.color }}"></span>
+                  <div style="min-width:0;display:flex;flex-direction:column;gap:1px">
+                    <div style="display:flex;align-items:baseline;gap:6px;min-width:0;font-size:13px"><span style="flex:none;font-weight:700;color:{{ s.color }}">{{ s.cat }}</span><span style="min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.title }}</span><span style="flex:none;font-size:12px;color:#a39d91;font-variant-numeric:tabular-nums">{{ s.time }}</span></div>
+                    <span style="font-size:12px;line-height:1.5;color:#6c6880;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ s.sum }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;color:#6c6880"><span style="flex:none;width:3px;height:13px;border-radius:2px;background:#cfc8bb"></span><span style="flex:none;color:#a39d91;font-variant-numeric:tabular-nums">{{ e.time }}</span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.title }}</span></div>
+              </sc-for>
+              <span style="font-size:12px;color:#bdb6aa">{{ d.empty }}</span>
+            </div>
+          </button>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ showDay }}" hint-placeholder-val="{{ true }}">
+      <section style="display:flex;flex-direction:column;gap:10px;position:sticky;top:{{ dayTop }}">
+        <div style="background:#ffffff;border-radius:18px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(45,42,58,0.05)">
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="font-size:44px;font-weight:700;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums;color:{{ dayColor }}">{{ dayNum }}</span>
+            <span style="width:1px;height:34px;background:#ebe6dd"></span>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-size:16px;font-weight:700;color:{{ dayColor }}">{{ dayDow }}</span>
+              <span style="font-size:12px;color:#8a8478">{{ dayYm }}</span>
+            </div>
+            <sc-if value="{{ hasHol }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:oklch(0.95 0.025 28);color:oklch(0.5 0.14 28)">{{ dayHol }}</span>
+            </sc-if>
+            <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-left:auto;display:flex;gap:6px">
+                <button onClick="{{ dayPrev }}" style="width:36px;height:36px;border-radius:50%;border:1px solid #ddd6ca;background:#ffffff;cursor:pointer">‹</button>
+                <button onClick="{{ dayNext }}" style="width:36px;height:36px;border-radius:50%;border:1px solid #ddd6ca;background:#ffffff;cursor:pointer">›</button>
+              </div>
+            </sc-if>
+          </div>
+          <div style="border-radius:12px;background:#f7f5f1;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:11px;font-weight:600;color:#8a8478">오늘의 일정</span>
+            <sc-for list="{{ dayEvents }}" as="e" hint-placeholder-count="1">
+              <div style="display:flex;gap:10px;font-size:14px"><span style="width:44px;flex:none;color:#8a8478;font-variant-numeric:tabular-nums">{{ e.time }}</span><span style="flex:1;min-width:0">{{ e.title }}</span></div>
+            </sc-for>
+            <span style="font-size:13px;color:#a39d91">{{ noEvents }}</span>
+          </div>
+        </div>
+
+        <sc-for list="{{ entries }}" as="s" hint-placeholder-count="2">
+          <button onClick="{{ s.open }}" style="display:flex;gap:12px;text-align:left;border:none;background:#ffffff;border-radius:16px;padding:14px 16px;cursor:pointer;box-shadow:0 1px 2px rgba(45,42,58,0.05)">
+            <span style="flex:none;width:4px;border-radius:3px;background:{{ s.color }}"></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:{{ s.soft }};color:{{ s.color }}">{{ s.badge }} {{ s.cat }}</span>
+                <span style="font-size:12px;color:#8a8478">{{ s.meta }}</span>
+                <span style="margin-left:auto;font-size:11px;color:oklch(0.55 0.1 60)">{{ s.state }}</span>
+              </div>
+              <span style="font-size:16px;font-weight:700;letter-spacing:-0.01em;line-height:1.35">{{ s.title }}</span>
+              <span style="font-size:14px;line-height:1.6;color:#5f5a6e;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ s.body }}</span>
+            </div>
+          </button>
+        </sc-for>
+
+        <sc-if value="{{ canAdd }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ addEntry }}" style="min-height:56px;border:1.5px dashed #d6cec0;background:transparent;border-radius:16px;font-size:15px;font-weight:600;color:#6c6880;cursor:pointer">+ 항목 추가 <span style="font-weight:400;color:#a39d91">{{ countText }}</span></button>
+        </sc-if>
+        <span style="text-align:center;font-size:12px;color:#a39d91;padding:4px 0">{{ dayNote }}</span>
+      </section>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ narrow }}" hint-placeholder-val="{{ true }}">
+    <nav style="position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(255,255,255,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #e6e1d8;display:grid;grid-template-columns:repeat(3,1fr);padding:6px 10px calc(env(safe-area-inset-bottom) + 6px)">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.go }}" style="min-height:50px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+          <span style="width:22px;height:3px;border-radius:2px;background:{{ t.bar }}"></span>
+          <span style="font-size:14px;font-weight:{{ t.weight }};color:{{ t.color }}">{{ t.label }}</span>
+        </button>
+      </sc-for>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeEdit }}" style="position:fixed;inset:0;z-index:40;background:rgba(45,42,58,0.35);display:flex;align-items:{{ sheetAlign }};justify-content:center">
+      <div onClick="{{ stop }}" style="width:100%;max-width:560px;max-height:92vh;overflow:auto;box-sizing:border-box;background:#ffffff;border-radius:{{ sheetRadius }};padding:18px 18px calc(env(safe-area-inset-bottom) + 18px);display:flex;flex-direction:column;gap:14px;box-shadow:0 -10px 40px rgba(0,0,0,0.15)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:18px;font-weight:700">{{ editTitle }}</span>
+          <span style="font-size:13px;color:#8a8478">{{ editDate }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+          <sc-for list="{{ editCats }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="min-height:46px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }}">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        <input value="{{ eTitle }}" onChange="{{ onETitle }}" placeholder="제목" style="min-height:48px;border:1px solid #e6e1d8;border-radius:12px;padding:0 14px;font-size:16px;font-weight:600;background:#faf9f7">
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px">
+          <input type="time" value="{{ eTime }}" onChange="{{ onETime }}" style="min-height:48px;border:1px solid #e6e1d8;border-radius:12px;padding:0 10px;font-size:16px;background:#faf9f7">
+          <input value="{{ ePlace }}" onChange="{{ onEPlace }}" placeholder="장소" style="min-height:48px;border:1px solid #e6e1d8;border-radius:12px;padding:0 14px;font-size:16px;background:#faf9f7">
+        </div>
+        <textarea value="{{ eBody }}" onChange="{{ onEBody }}" placeholder="내용" rows="6" style="border:1px solid #e6e1d8;border-radius:12px;padding:12px 14px;font-size:16px;line-height:1.6;background:#faf9f7;resize:vertical"></textarea>
+        <span style="font-size:12px;color:#a39d91">첨부·그림은 노트북 앱에서 추가합니다</span>
+        <div style="display:flex;gap:8px">
+          <sc-if value="{{ canDelete }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ deleteEdit }}" style="min-height:50px;padding:0 16px;border:1px solid oklch(0.85 0.05 28);background:#ffffff;color:oklch(0.5 0.14 28);border-radius:14px;font-size:15px;cursor:pointer">삭제</button>
+          </sc-if>
+          <button onClick="{{ closeEdit }}" style="margin-left:auto;min-height:50px;padding:0 18px;border:1px solid #ddd6ca;background:#ffffff;border-radius:14px;font-size:15px;cursor:pointer">취소</button>
+          <button onClick="{{ saveEdit }}" style="min-height:50px;padding:0 22px;border:none;background:#2d2a3a;color:#f8f7fb;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">저장</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSettings }}" style="position:fixed;inset:0;z-index:40;background:rgba(45,42,58,0.35);display:flex;align-items:{{ sheetAlign }};justify-content:center">
+      <div onClick="{{ stop }}" style="width:100%;max-width:560px;max-height:92vh;overflow:auto;box-sizing:border-box;background:#ffffff;border-radius:{{ sheetRadius }};padding:18px 18px calc(env(safe-area-inset-bottom) + 18px);display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:18px;font-weight:700">설정</span>
+          <button onClick="{{ closeSettings }}" style="width:40px;height:40px;border:none;background:none;font-size:22px;color:#8a8478;cursor:pointer">×</button>
+        </div>
+        <span style="font-size:13px;color:#6c6880;line-height:1.6">노트북 앱과 같은 웹 앱 URL·DIARY_KEY를 입력하세요. 기록은 노션에 저장되고 이 기기에는 사본만 보관됩니다.</span>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#6c6880">웹 앱 URL<input value="{{ gasUrl }}" onChange="{{ onGasUrl }}" placeholder="https://script.google.com/macros/s/…/exec" style="min-height:46px;border:1px solid #e6e1d8;border-radius:12px;padding:0 12px;font-size:15px;background:#faf9f7"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#6c6880">DIARY_KEY<input type="password" value="{{ gasKey }}" onChange="{{ onGasKey }}" style="min-height:46px;border:1px solid #e6e1d8;border-radius:12px;padding:0 12px;font-size:15px;background:#faf9f7"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#6c6880">다이어리 시작일 (노트북 앱과 같게)<input type="date" value="{{ start }}" min="2026-01-01" onChange="{{ onStart }}" style="min-height:46px;border:1px solid #e6e1d8;border-radius:12px;padding:0 12px;font-size:15px;background:#faf9f7"></label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ testGas }}" style="min-height:46px;padding:0 18px;border:none;background:#2d2a3a;color:#f8f7fb;border-radius:12px;font-size:15px;cursor:pointer">연결 테스트</button>
+          <span style="font-size:13px;color:#6c6880">{{ syncText }}</span>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding-top:4px;font-size:13px"><a href="./?view=desktop">PC 화면으로 보기</a><a href="mobile.html?view=auto">기기에 맞게 자동</a></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);z-index:50;max-width:90vw;background:#2d2a3a;color:#f8f7fb;padding:12px 18px;border-radius:999px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,0.2)">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;weekStart&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;월요일&quot;,&quot;일요일&quot;],&quot;default&quot;:&quot;일요일&quot;,&quot;tsType&quot;:&quot;'월요일'|'일요일'&quot;}}">
+class Component extends DCLogic {
+  KEY = 'diary.mobile.v1';
+  CATS = [
+    { id: 'ipdae', name: '입대의', color: 'oklch(0.48 0.07 215)', soft: 'oklch(0.94 0.022 215)' },
+    { id: 'office', name: '관리사무소', color: 'oklch(0.5 0.075 125)', soft: 'oklch(0.94 0.025 120)' },
+    { id: 'consult', name: '컨설팅', color: 'oklch(0.53 0.08 40)', soft: 'oklch(0.94 0.022 45)' },
+    { id: 'daily', name: '일상', color: 'oklch(0.5 0.07 305)', soft: 'oklch(0.94 0.022 305)' }
+  ];
+  LUNAR = { 2026: ['02-17', '05-24', '09-25'], 2027: ['02-06', '05-13', '09-15'], 2028: ['01-26', '05-02', '10-03'], 2029: ['02-13', '05-20', '09-22'], 2030: ['02-03', '05-09', '09-12'] };
+  ELECT = { '2026-06-03': '지방선거일', '2028-04-12': '국회의원선거일', '2030-06-12': '지방선거일' };
+  RED = 'oklch(0.55 0.16 28)'; BLUE = 'oklch(0.5 0.1 250)'; INK = '#2d2a3a';
+  DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  _hc = {};
+  state = { view: 'day', left: 'month', sel: null, items: {}, remote: {}, del: [], gas: { url: '', key: '' }, start: '2026-01-01', lastSync: null, syncState: 'idle', syncMsg: '', edit: null, settings: false, toast: null, wide: false };
+
+  componentDidMount() {
+    let c = null; try { c = JSON.parse(localStorage.getItem(this.KEY)); } catch (e) {}
+    c = c || {};
+    this._items = c.items || {};
+    this.setState({ items: this._items, remote: c.remote || {}, del: c.del || [], gas: c.gas || { url: '', key: '' }, start: c.start || '2026-01-01', lastSync: c.lastSync || null, view: c.view || 'day', left: c.left || 'month', sel: this.key(new Date()) },
+      () => { if (!this.gasReady()) this.setState({ settings: true }); else this.sync(false); });
+    this._rs = () => { const w = window.innerWidth >= 760; if (w !== this.state.wide) this.setState({ wide: w }); };
+    this._rs(); window.addEventListener('resize', this._rs);
+    this._iv = setInterval(() => this.sync(false), 5 * 60 * 1000);
+    this._vis = () => { if (document.visibilityState === 'visible') this.sync(false); };
+    document.addEventListener('visibilitychange', this._vis); window.addEventListener('online', this._vis);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  componentWillUnmount() { clearInterval(this._iv); window.removeEventListener('resize', this._rs); document.removeEventListener('visibilitychange', this._vis); window.removeEventListener('online', this._vis); }
+  get I() { return this._items || this.state.items || {}; }
+  persist() { const S = this.state; try { localStorage.setItem(this.KEY, JSON.stringify({ items: this.I, remote: S.remote, del: S.del, gas: S.gas, start: S.start, lastSync: S.lastSync, view: S.view, left: S.left })); } catch (e) {} }
+  set(p, cb) { this.setState(p, () => { this.persist(); cb && cb(); }); }
+  setItems(items) { this._items = items; this.set({ items }); }
+  flash(t) { clearTimeout(this._t); this.setState({ toast: t }); this._t = setTimeout(() => this.setState({ toast: null }), 2600); }
+  uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  pad = n => String(n).padStart(2, '0');
+  key = dt => `${dt.getFullYear()}-${this.pad(dt.getMonth() + 1)}-${this.pad(dt.getDate())}`;
+  parse = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+  add = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
+  ws() { return (this.props.weekStart || '일요일') === '일요일' ? 0 : 1; }
+  sow(dt) { return this.add(dt, -((dt.getDay() - this.ws() + 7) % 7)); }
+  holidays(y) {
+    if (this._hc[y]) return this._hc[y];
+    const H = {}, mk = md => new Date(y, Number(md.slice(0, 2)) - 1, Number(md.slice(3))), put = (dt, n) => { const k = this.key(dt); H[k] = H[k] ? H[k] + '·' + n : n; };
+    const subs = [];
+    [['01-01', '신정', 0], ['03-01', '삼일절', 1], ['05-05', '어린이날', 1], ['06-06', '현충일', 0], ['08-15', '광복절', 1], ['10-03', '개천절', 1], ['10-09', '한글날', 1], ['12-25', '성탄절', 1]].forEach(([md, n, sub]) => { const dt = mk(md); put(dt, n); if (sub) subs.push({ days: [dt], wk: true }); });
+    Object.entries(this.ELECT).forEach(([k, n]) => { if (k.startsWith(y + '')) put(this.parse(k), n); });
+    const L = this.LUNAR[y];
+    if (L) {
+      const b = mk(L[1]); put(b, '부처님오신날'); subs.push({ days: [b], wk: true });
+      [[L[0], '설날'], [L[2], '추석']].forEach(([md, n]) => { const c = mk(md), days = [this.add(c, -1), c, this.add(c, 1)]; days.forEach((d, i) => put(d, i === 1 ? n : n + ' 연휴')); subs.push({ days, wk: false }); });
+    }
+    subs.forEach(({ days, wk }) => {
+      const need = days.some(d => wk ? (d.getDay() === 0 || d.getDay() === 6 || H[this.key(d)].includes('·')) : (d.getDay() === 0 || H[this.key(d)].includes('·')));
+      if (!need) return;
+      let d = this.add(days[days.length - 1], 1);
+      while (d.getDay() === 0 || d.getDay() === 6 || H[this.key(d)]) d = this.add(d, 1);
+      put(d, '대체공휴일');
+    });
+    return (this._hc[y] = H);
+  }
+  hol(k) { return this.holidays(Number(k.slice(0, 4)))[k] || ''; }
+  cat(id) { return this.CATS.find(c => c.id === id) || this.CATS[3]; }
+  catId(name) { const c = this.CATS.find(c => c.name === name); if (c) return c.id; const v = name || ''; return /입대|입주자/.test(v) ? 'ipdae' : /관리/.test(v) ? 'office' : /컨설/.test(v) ? 'consult' : 'daily'; }
+  locked(k) { return k < this.state.start; }
+  numColor(dt, k) { return (this.hol(k) || dt.getDay() === 0) ? this.RED : dt.getDay() === 6 ? this.BLUE : this.INK; }
+  slots(k) { const a = this.I[k] || []; return [0, 1, 2, 3].map(i => a[i] || null); }
+  filled(k) { return this.slots(k).filter(Boolean); }
+  sumText(b) { return String(b || '').split(/\r?\n/).map(l => l.replace(/^\s*([-*•]|\d+[.)]|#{1,3})\s*/, '').trim()).filter(Boolean).join(' · '); }
+  evTime(e) {
+    if (e.time && e.time !== '종일') return { time: e.time, title: e.title };
+    const m = String(e.title || '').match(/(?:^|\D)([01]?\d|2[0-3]):?([0-5]\d)(?!\d)/);
+    if (!m) return { time: '', title: e.title };
+    return { time: `${String(m[1]).padStart(2, '0')}:${m[2]}`, title: String(e.title).replace(m[0].replace(/^\D/, ''), '').trim() };
+  }
+  norm(t) { return String(t || '').replace(/[\s\[\](){}<>.,·:;'"`~!?\-_/]/g, '').toLowerCase(); }
+  events(k) {
+    const ent = this.filled(k).map(s => ({ n: this.norm(s.title), t: s.time }));
+    return ((this.state.remote || {})[k] || []).map(e => this.evTime(e)).filter(e => {
+      const n = this.norm(e.title); if (!n) return false;
+      return !ent.some(x => x.n && (x.n === n || n.includes(x.n) || x.n.includes(n) || (x.t && x.t === e.time)));
+    }).sort((a, b) => (a.time || '00').localeCompare(b.time || '00'));
+  }
+  gasReady() { const g = this.state.gas; return !!(g && g.url && g.key); }
+  async call(action, body) {
+    const r = await fetch(this.state.gas.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: this.state.gas.key, action, ...body }) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || '연동 오류'); return j;
+  }
+  pushSoon() { clearTimeout(this._pt); this._pt = setTimeout(() => this.sync(false), 1500); }
+  async sync(manual) {
+    if (!this.gasReady()) { if (manual) this.setState({ settings: true }); return; }
+    if (this._busy) { this._again = true; return; }
+    this._busy = true; this.setState({ syncState: 'syncing' });
+    const errs = [];
+    try {
+      const items = [];
+      Object.entries(this.I).forEach(([k, a]) => a.forEach((s, i) => { if (s && s.pending) items.push({ id: s.id, v: s.v, date: k, slot: i + 1, cat: s.cat, catName: this.cat(s.cat).name, title: s.title, body: s.body, time: s.time, place: s.place, notionId: s.notionId || '' }); }));
+      const del = this.state.del.slice();
+      if (items.length || del.length) {
+        const n = Math.max(1, Math.ceil(items.length / 8));
+        for (let c = 0; c < n; c++) {
+          const chunk = items.slice(c * 8, c * 8 + 8), r = await this.call('push', { items: chunk, notionDel: c === 0 ? del : [], calDel: [] }), res = r.results || {};
+          const data = {};
+          Object.entries(this.I).forEach(([k, a]) => { data[k] = a.map(s => {
+            const x = s && res[s.id]; if (!x) return s;
+            const sent = chunk.find(it => it.id === s.id);
+            if (x.error) { errs.push(x.error); return { ...s, notionId: x.notionId || s.notionId }; }
+            return { ...s, notionId: x.notionId || s.notionId, pending: s.v !== sent.v };
+          }); });
+          this.setItems(data);
+          if (c === 0) this.set({ del: this.state.del.filter(x => !del.includes(x)) });
+        }
+      }
+      const now = new Date(), from = [this.state.start, this.key(this.add(now, -60))].sort()[1], to = this.key(this.add(now, 400));
+      const known = {};
+      Object.entries(this.I).forEach(([k, a]) => { if (k < from) return; a.forEach(s => { if (s && s.notionId && s.nEdited) known[s.notionId] = s.nEdited; }); });
+      const r = await this.call('pull', { from, to, known }), remote = {};
+      (r.events || []).forEach(e => { if (e.diary || e.date < this.state.start) return; (remote[e.date] = remote[e.date] || []).push({ time: e.time, title: e.title }); });
+      if (r.notionError) errs.push('노션: ' + r.notionError);
+      else if (r.notion) this.merge(r.notion, from);
+      const t = new Date();
+      this.set({ remote, syncState: errs.length ? 'error' : 'ok', syncMsg: errs.join(' / '), lastSync: `${t.getMonth() + 1}/${t.getDate()} ${this.pad(t.getHours())}:${this.pad(t.getMinutes())}` });
+      if (manual) this.flash(errs.length ? '일부 실패: ' + errs[0] : '동기화 완료');
+    } catch (e) {
+      const off = navigator.onLine === false || e instanceof TypeError;
+      this.setState({ syncState: off ? 'offline' : 'error', syncMsg: String(e.message || e) });
+      if (manual) this.flash(off ? '오프라인 — 연결되면 자동으로 보냅니다' : '동기화 실패: ' + (e.message || e));
+    }
+    this._busy = false;
+    if (this._again) { this._again = false; setTimeout(() => this.sync(false), 300); }
+  }
+  merge(list, from) {
+    const old = this.I, byId = {}, byN = {}, data = {}, placed = new Set();
+    Object.entries(old).forEach(([k, a]) => { if (k < from) data[k] = a; a.forEach(s => { if (!s) return; byId[s.id] = s; if (s.notionId) byN[s.notionId] = s; }); });
+    const put = (k, s, pref) => {
+      const a = data[k] = data[k] || [null, null, null, null];
+      const i = pref >= 1 && pref <= 4 && !a[pref - 1] ? pref - 1 : a.findIndex(x => !x);
+      if (i < 0) return; a[i] = s; placed.add(s.id);
+    };
+    Object.entries(old).forEach(([k, a]) => { if (k >= from) a.forEach((s, i) => { if (s && s.pending) put(k, s, i + 1); }); });
+    [...list].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.slot || 99) - (b.slot || 99)).forEach(n => {
+      if (!n.date || this.state.del.includes(n.id)) return;
+      const prev = (n.did && byId[n.did]) || byN[n.id];
+      if (prev && prev.pending) return;
+      const id = n.did || (prev ? prev.id : 'n:' + n.id);
+      if (placed.has(id)) return;
+      const body = typeof n.body === 'string' ? n.body : (prev ? prev.body : '');
+      put(n.date, { id, notionId: n.id, cat: this.catId(n.cat), title: n.title || '', body: body || '', time: n.time || '', place: n.place || '', nEdited: n.edited, pending: false, v: 0 }, n.slot);
+    });
+    Object.keys(data).forEach(k => { if (data[k].every(x => !x)) delete data[k]; });
+    this.setItems(data);
+  }
+  openEdit(k, i) {
+    const s = this.slots(k)[i];
+    this.setState({ edit: { date: k, slot: i, isNew: !s, cat: s ? s.cat : 'ipdae', title: s ? s.title : '', time: s ? s.time : '', place: s ? s.place : '', body: s ? s.body : '' } });
+  }
+  saveEdit() {
+    const E = this.state.edit; if (!E) return;
+    const data = { ...this.I }, a = this.slots(E.date), cur = a[E.slot];
+    a[E.slot] = { ...(cur || { id: this.uid(), notionId: '' }), cat: E.cat, title: E.title.trim(), body: E.body, time: E.time, place: E.place.trim(), pending: true, v: Date.now() };
+    data[E.date] = a; this.setItems(data); this.setState({ edit: null }); this.flash('저장됨 · 노션으로 보내는 중'); this.pushSoon();
+  }
+  deleteEdit() {
+    const E = this.state.edit; if (!E) return;
+    const a = this.slots(E.date), cur = a[E.slot]; if (!cur) return this.setState({ edit: null });
+    if (!confirm('이 항목을 삭제할까요? 노션 행도 휴지통으로 옮겨집니다.')) return;
+    if (cur.notionId) this.set({ del: [...this.state.del, cur.notionId] });
+    a[E.slot] = null; const data = { ...this.I }; if (a.every(x => !x)) delete data[E.date]; else data[E.date] = a;
+    this.setItems(data); this.setState({ edit: null }); this.pushSoon();
+  }
+  shift(dir) {
+    const S = this.state, unit = S.wide ? S.left : S.view, dt = this.parse(S.sel);
+    const n = unit === 'day' ? this.add(dt, dir) : unit === 'week' ? this.add(dt, 7 * dir) : new Date(dt.getFullYear(), dt.getMonth() + dir, 1);
+    const min = this.parse('2026-01-01');
+    this.set({ sel: this.key(n < min ? min : n) });
+  }
+  pick(k) { if (this.state.wide) this.set({ sel: k }); else this.set({ sel: k, view: 'day' }); }
+
+  renderVals() {
+    const S = this.state;
+    if (!S.sel) return { weekdays: [], cells: [], weekDays: [], entries: [], dayEvents: [], tabs: [], leftTabs: [], showDay: true, narrow: true };
+    const k = S.sel, dt = this.parse(k), y = dt.getFullYear(), m = dt.getMonth(), today = this.key(new Date()), wide = S.wide;
+    const showMonth = wide ? S.left === 'month' : S.view === 'month', showWeek = wide ? S.left === 'week' : S.view === 'week', showDay = wide || S.view === 'day';
+    const unit = wide ? S.left : S.view, w0 = this.sow(dt), w6 = this.add(w0, 6);
+    const wk = Math.round((w0 - this.sow(new Date(y, 0, 1))) / 864e5 / 7) + 1;
+    const titles = { day: `${m + 1}월 ${dt.getDate()}일`, week: `${wk}주차`, month: `${y}년 ${m + 1}월` };
+    const subs = { day: `${y} · ${this.DOW[dt.getDay()]}요일`, week: `${w0.getMonth() + 1}.${w0.getDate()} – ${w6.getMonth() + 1}.${w6.getDate()}`, month: `항목 ${Object.entries(this.I).filter(([kk]) => kk.startsWith(`${y}-${this.pad(m + 1)}`)).reduce((n, [, a]) => n + a.filter(Boolean).length, 0)}개` };
+    const weekdays = [0, 1, 2, 3, 4, 5, 6].map(i => (i + this.ws()) % 7).map(i => ({ label: this.DOW[i], color: i === 0 ? this.RED : i === 6 ? this.BLUE : '#8a8478' }));
+    const v = {};
+    if (showMonth) {
+      const first = new Date(y, m, 1), st = this.sow(first), dim = new Date(y, m + 1, 0).getDate(), rows = Math.ceil(((first - st) / 864e5 + dim) / 7);
+      v.cells = Array.from({ length: rows * 7 }, (_, i) => {
+        const d = this.add(st, i), kk = this.key(d), inM = d.getMonth() === m, isSel = kk === k;
+        const bars = this.filled(kk).map(s => ({ color: this.cat(s.cat).color }));
+        if (this.events(kk).length) bars.push({ color: '#d8d1c4' });
+        return { num: d.getDate(), op: !inM ? 0.3 : this.locked(kk) ? 0.45 : 1, numColor: isSel ? '#ffffff' : this.numColor(d, kk), numBg: isSel ? '#2d2a3a' : 'transparent',
+          ring: kk === today && !isSel ? 'inset 0 0 0 1.5px #2d2a3a' : 'none', bg: isSel && wide ? '#f4f1ec' : 'transparent', bars: bars.slice(0, 4), open: () => this.pick(kk) };
+      });
+    }
+    if (showWeek) {
+      v.weekDays = Array.from({ length: 7 }, (_, i) => {
+        const d = this.add(w0, i), kk = this.key(d), en = this.filled(kk), ev = this.events(kk);
+        return { num: d.getDate(), dow: this.DOW[d.getDay()] + '요일', hol: this.hol(kk), numColor: this.numColor(d, kk), op: this.locked(kk) ? 0.45 : 1,
+          ring: kk === k ? '0 0 0 2px #2d2a3a' : '0 1px 2px rgba(45,42,58,0.05)',
+          entries: en.map(s => ({ cat: this.cat(s.cat).name, color: this.cat(s.cat).color, title: s.title || '(제목 없음)', time: s.time || '', sum: this.sumText(s.body) })),
+          events: ev, empty: en.length || ev.length ? '' : '기록 없음', open: () => this.pick(kk) };
+      });
+    }
+    if (showDay) {
+      const h = this.hol(k), lk = this.locked(k), sl = this.slots(k);
+      v.dayNum = dt.getDate(); v.dayDow = this.DOW[dt.getDay()] + '요일'; v.dayColor = this.numColor(dt, k);
+      v.dayYm = `${y}년 ${m + 1}월`; v.hasHol = !!h; v.dayHol = h;
+      v.dayEvents = this.events(k).map(e => ({ time: e.time || '종일', title: e.title }));
+      v.noEvents = v.dayEvents.length ? '' : S.gas.url ? '일정 없음' : '설정에서 연동하면 일정이 보입니다';
+      v.entries = sl.map((s, i) => s && { badge: `0${i + 1}`, cat: this.cat(s.cat).name, color: this.cat(s.cat).color, soft: this.cat(s.cat).soft, title: s.title || '(제목 없음)', body: s.body || '',
+        meta: [s.time, s.place].filter(Boolean).join(' · '), state: s.pending ? '전송 대기' : '', open: () => this.openEdit(k, i) }).filter(Boolean);
+      const free = sl.findIndex(x => !x), cnt = sl.filter(Boolean).length;
+      v.canAdd = !lk && free >= 0; v.countText = `${cnt}/4`; v.addEntry = () => this.openEdit(k, free);
+      v.dayNote = lk ? '시작일 이전 날짜는 기록하지 않습니다' : free < 0 ? '하루 최대 4개까지 기록할 수 있습니다' : '';
+      v.dayPrev = () => this.set({ sel: this.key(this.add(dt, -1)) }); v.dayNext = () => this.set({ sel: this.key(this.add(dt, 1)) });
+    }
+    const E = S.edit;
+    const syncText = !this.gasReady() ? '연동 안 됨' : S.syncState === 'syncing' ? '동기화 중…' : S.syncState === 'offline' ? '오프라인' : S.syncState === 'error' ? '오류: ' + S.syncMsg : S.lastSync ? '동기화 ' + S.lastSync : '연결 대기';
+    return {
+      ...v, weekdays, wide, narrow: !wide, showMonth, showWeek, showDay,
+      title: titles[unit], sub: subs[unit],
+      cols: wide ? 'minmax(0,1.15fr) minmax(0,1fr)' : 'minmax(0,1fr)', padB: wide ? '28px' : 'calc(env(safe-area-inset-bottom) + 96px)',
+      cellH: wide ? '74px' : '56px', dayTop: wide ? '74px' : 'auto',
+      sheetAlign: wide ? 'center' : 'flex-end', sheetRadius: wide ? '20px' : '20px 20px 0 0',
+      prev: () => this.shift(-1), next: () => this.shift(1), goToday: () => this.set({ sel: this.key(new Date()) }),
+      tabs: [['month', '월간'], ['week', '주간'], ['day', '일간']].map(([id, label]) => ({ label, go: () => this.set({ view: id }), bar: S.view === id ? '#2d2a3a' : 'transparent', color: S.view === id ? '#2d2a3a' : '#8a8478', weight: S.view === id ? 700 : 500 })),
+      leftTabs: [['month', '월간'], ['week', '주간']].map(([id, label]) => ({ label, go: () => this.set({ left: id }), bg: S.left === id ? '#ffffff' : 'transparent', color: S.left === id ? '#2d2a3a' : '#6c6880' })),
+      syncDot: !this.gasReady() ? '#cfc8bb' : S.syncState === 'syncing' ? 'oklch(0.75 0.13 80)' : S.syncState === 'ok' ? 'oklch(0.65 0.12 150)' : S.syncState === 'idle' ? '#cfc8bb' : 'oklch(0.62 0.16 28)',
+      syncShort: wide ? syncText : '', syncText, syncNow: () => this.sync(true),
+      editing: !!E, editTitle: E && E.isNew ? '새 항목' : '항목 편집', editDate: E ? `${this.parse(E.date).getMonth() + 1}월 ${this.parse(E.date).getDate()}일 · 0${E.slot + 1}` : '',
+      editCats: this.CATS.map(c => ({ name: c.name, bg: E && E.cat === c.id ? c.color : c.soft, fg: E && E.cat === c.id ? '#ffffff' : c.color, pick: () => this.setState({ edit: { ...this.state.edit, cat: c.id } }) })),
+      eTitle: E ? E.title : '', eTime: E ? E.time : '', ePlace: E ? E.place : '', eBody: E ? E.body : '',
+      onETitle: e => this.setState({ edit: { ...this.state.edit, title: e.target.value } }), onETime: e => this.setState({ edit: { ...this.state.edit, time: e.target.value } }),
+      onEPlace: e => this.setState({ edit: { ...this.state.edit, place: e.target.value } }), onEBody: e => this.setState({ edit: { ...this.state.edit, body: e.target.value } }),
+      canDelete: !!(E && !E.isNew), saveEdit: () => this.saveEdit(), deleteEdit: () => this.deleteEdit(), closeEdit: () => this.setState({ edit: null }), stop: e => e.stopPropagation(),
+      settingsOpen: S.settings, openSettings: () => this.setState({ settings: true }), closeSettings: () => this.setState({ settings: false }),
+      gasUrl: S.gas.url, gasKey: S.gas.key, start: S.start,
+      onGasUrl: e => this.set({ gas: { ...this.state.gas, url: e.target.value.trim() } }), onGasKey: e => this.set({ gas: { ...this.state.gas, key: e.target.value.trim() } }),
+      onStart: e => { if (e.target.value >= '2026-01-01') this.set({ start: e.target.value }); },
+      testGas: async () => { if (!this.gasReady()) return this.flash('URL과 키를 입력하세요'); try { const r = await this.call('ping', {}); this.flash(`연결됨 · 코드 v${r.version}${r.notion ? ' · 노션 ✓' : ''}`); this.sync(false); } catch (e) { this.flash('연결 실패: ' + (e.message || e)); } },
+      hasToast: !!S.toast, toast: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

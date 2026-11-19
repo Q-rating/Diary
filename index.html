@@ -8,6 +8,7 @@
 <body>
 <x-dc>
 <helmet>
+<script src="view-switch.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#e9e5de">
@@ -342,6 +343,7 @@ textarea:focus,input:focus{outline:none}
         <div style="border:1px solid #e6e2ef;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <span style="font-size:15px;font-weight:600">앱으로 설치</span>
           <span style="flex:1;min-width:200px;font-size:12px;color:#6c6880;line-height:1.5">{{ installText }}</span>
+          <a href="mobile.html?view=mobile" style="font-size:12px">모바일 화면으로</a>
           <sc-if value="{{ canInstall }}" hint-placeholder-val="{{ false }}"><button onClick="{{ installApp }}" style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer">설치</button></sc-if>
         </div>
         <div style="border:1px solid #e6e2ef;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
@@ -541,7 +543,7 @@ class Component extends DCLogic {
     const data = {}; Object.entries(this.D).forEach(([k, arr]) => { data[k] = this.locked(k) ? arr : arr.map(s => s && { ...s, notion: 'pending', updatedAt: Date.now() }); });
     this.save(data, true);
     this.flash('노션에 다시 보내는 중…');
-    await this.sync(false, true);
+    await this.sync(false);
     const left = Object.entries(this.D).reduce((n, [k, a]) => n + (this.locked(k) ? 0 : a.filter(s => s && s.notion === 'pending').length), 0);
     if (left || this.state.syncState !== 'ok') return this.flash('일부 항목 전송 실패 — 정리는 하지 않았습니다. ' + (this.state.syncMsg || ''));
     try {
@@ -553,7 +555,7 @@ class Component extends DCLogic {
   }
   async testGas() {
     if (!this.gasReady()) return this.flash('웹 앱 URL과 DIARY_KEY를 입력하세요');
-    try { const r = await this.call('ping', {}); const pc = r.columns && r.columns['장소'], pn = !r.notion ? '' : !pc ? ' · ⚠ 노션에 ‘장소’ 열 없음' : (pc === 'rich_text' || pc === 'select') ? ' · 장소 열 ✓' : ` · ⚠ ‘장소’ 열 유형(${pc})을 텍스트로 바꿔주세요`;
+    try { const r = await this.call('ping', {}); const pn = !r.notion ? '' : r.warn ? ' · ⚠ ' + r.warn : ' · 장소 열 ✓';
     this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 6 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}${pn}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
     catch (e) { this.setState({ syncState: 'error', syncMsg: String(e.message || e) }); this.flash('연결 실패: ' + (e.message || e)); }
   }
@@ -626,11 +628,11 @@ class Component extends DCLogic {
       if (!n.date || this.locked(n.date)) return;
       const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', place: n.place || '', nEdited: n.edited };
       if (typeof n.body === 'string') fields.body = n.body;
-      if (n.did && !byId[n.did]) return;
-      const at = n.did ? byId[n.did] : idx[n.id];
+      if (((this.state.outbox || {}).notionDel || []).includes(n.id)) return;
+      const at = (n.did && byId[n.did]) || idx[n.id];
       if (at) {
         const [k, i] = at, s0 = data[k] && data[k][i]; if (!s0) return;
-        const s = s0.notionId === n.id ? s0 : { ...s0, notionId: n.id };
+        const s = s0.notionId === n.id && (!n.did || s0.id === n.did) ? s0 : { ...s0, notionId: n.id, id: n.did || s0.id };
         if (s !== s0) setAt(k, i, s);
         const fresh = s.notion !== 'pending' && ed > (s.syncedAt || 0) + 60000;
         if (!fresh) { const j = n.slot >= 1 && n.slot <= 4 ? n.slot - 1 : i, s2 = s.nEdited !== n.edited ? { ...s, nEdited: n.edited } : s; if (k === n.date && j !== i && s.notion !== 'pending' && !(data[k] || [])[j]) { setAt(k, i, null); setAt(k, j, s2); } else if (s2 !== s) setAt(k, i, s2); return; }
@@ -640,8 +642,8 @@ class Component extends DCLogic {
       }
       const ta = data[n.date] || [];
       const twin = ta.findIndex(s => s && !s.notionId && s.title === fields.title && s.cat === fields.cat);
-      if (twin >= 0) { setAt(n.date, twin, { ...ta[twin], notionId: n.id, nEdited: n.edited, syncedAt: ed }); return; }
-      if (this.placeSlot(data, n.date, { id: this.uid(), body: '', ...fields, files: [], notion: 'synced', cal: false, notionId: n.id, syncedAt: ed, updatedAt: 0 }, n.slot)) changed = true;
+      if (twin >= 0) { setAt(n.date, twin, { ...ta[twin], id: n.did || ta[twin].id, notionId: n.id, nEdited: n.edited, syncedAt: ed }); return; }
+      if (this.placeSlot(data, n.date, { id: n.did || this.uid(), body: '', ...fields, files: [], notion: 'synced', cal: false, notionId: n.id, syncedAt: ed, updatedAt: 0 }, n.slot)) changed = true;
     });
     deleted.forEach(id => {
       Object.keys(data).forEach(k => (data[k] || []).forEach((s, i) => { if (s && s.notionId === id && s.notion !== 'pending') { (s.files || []).forEach(f => f.path && this.removeFile(f.path)); setAt(k, i, null); } }));
