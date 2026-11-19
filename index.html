@@ -611,6 +611,7 @@ class Component extends DCLogic {
     const r = await this.call('pull', { from, to, known }), remote = {};
     (r.events || []).forEach(e => { if (e.diary || this.locked(e.date)) return; (remote[e.date] = remote[e.date] || []).push({ time: e.time, title: e.title, cal: e.cal }); });
     this.setState({ remote });
+    if (!(Number(r.version) >= 6)) errs.push('Apps Script가 예전 코드입니다 — 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요');
     if (r.notionError) errs.push('노션: ' + r.notionError);
     if (r.notion) this.mergeNotion(r.notion, r.deleted || []);
   }
@@ -621,7 +622,7 @@ class Component extends DCLogic {
     const byId = {};
     Object.entries(data).forEach(([k, arr]) => arr.forEach((s, i) => { if (!s) return; if (s.notionId) idx[s.notionId] = [k, i]; byId[s.id] = [k, i]; }));
     const setAt = (k, i, v) => { const a = [0, 1, 2, 3].map(j => (data[k] || [])[j] || null); a[i] = v; if (a.every(x => !x)) delete data[k]; else data[k] = a; changed = true; };
-    list.forEach(n => {
+    list.slice().sort((a, b) => (a.slot || 9) - (b.slot || 9) || String(a.time || '99').localeCompare(String(b.time || '99'))).forEach(n => {
       if (!n.date || this.locked(n.date)) return;
       const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', place: n.place || '', nEdited: n.edited };
       if (typeof n.body === 'string') fields.body = n.body;
@@ -632,8 +633,8 @@ class Component extends DCLogic {
         const s = s0.notionId === n.id ? s0 : { ...s0, notionId: n.id };
         if (s !== s0) setAt(k, i, s);
         const fresh = s.notion !== 'pending' && ed > (s.syncedAt || 0) + 60000;
-        if (!fresh) { if (s.nEdited !== n.edited) setAt(k, i, { ...s, nEdited: n.edited }); return; }
-        if (k === n.date) { setAt(k, i, { ...s, ...fields, syncedAt: ed }); return; }
+        if (!fresh) { const j = n.slot >= 1 && n.slot <= 4 ? n.slot - 1 : i, s2 = s.nEdited !== n.edited ? { ...s, nEdited: n.edited } : s; if (k === n.date && j !== i && s.notion !== 'pending' && !(data[k] || [])[j]) { setAt(k, i, null); setAt(k, j, s2); } else if (s2 !== s) setAt(k, i, s2); return; }
+        if (k === n.date) { const j = n.slot >= 1 && n.slot <= 4 ? n.slot - 1 : i; if (j !== i && !(data[k] || [])[j]) { setAt(k, i, null); setAt(k, j, { ...s, ...fields, syncedAt: ed }); } else setAt(k, i, { ...s, ...fields, syncedAt: ed }); return; }
         const ta = data[n.date] || []; if (![0, 1, 2, 3].some(j => !ta[j])) return;
         setAt(k, i, null); this.placeSlot(data, n.date, { ...s, ...fields, syncedAt: ed }, n.slot); return;
       }
