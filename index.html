@@ -553,7 +553,8 @@ class Component extends DCLogic {
   }
   async testGas() {
     if (!this.gasReady()) return this.flash('웹 앱 URL과 DIARY_KEY를 입력하세요');
-    try { const r = await this.call('ping', {}); this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 5 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
+    try { const r = await this.call('ping', {}); const pc = r.columns && r.columns['장소'], pn = !r.notion ? '' : !pc ? ' · ⚠ 노션에 ‘장소’ 열 없음' : (pc === 'rich_text' || pc === 'select') ? ' · 장소 열 ✓' : ` · ⚠ ‘장소’ 열 유형(${pc})을 텍스트로 바꿔주세요`;
+    this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 6 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}${pn}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
     catch (e) { this.setState({ syncState: 'error', syncMsg: String(e.message || e) }); this.flash('연결 실패: ' + (e.message || e)); }
   }
   installApp() { const p = this._prompt; if (!p) return; p.prompt(); p.userChoice.finally(() => { this._prompt = null; this.setState({ canInstall: false }); }); }
