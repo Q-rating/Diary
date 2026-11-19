@@ -336,6 +336,7 @@ textarea:focus,input:focus{outline:none}
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6c6880">웹 앱 URL<input value="{{ gasUrl }}" onChange="{{ onGasUrl }}" placeholder="https://script.google.com/macros/s/…/exec" style="border:1px solid #d9d4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#2d2a3a;background:#ffffff"></label>
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6c6880">DIARY_KEY<input type="password" value="{{ gasKey }}" onChange="{{ onGasKey }}" placeholder="스크립트 속성에 넣은 비밀번호" style="border:1px solid #d9d4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#2d2a3a;background:#ffffff"></label>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button onClick="{{ testGas }}" style="border:none;background:#2d2a3a;color:#f8f7fb;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer">연결 테스트</button><span style="font-size:12px;color:#6c6880">{{ gasStatus }}</span></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button onClick="{{ rebuildNotion }}" style="border:1px solid #d9d4e6;background:#ffffff;border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer">노션 다시 맞추기</button><span style="font-size:12px;color:#8a8599">중복 행이 생겼을 때 다이어리 기준으로 정리합니다</span></div>
           <div style="font-size:12px;color:#8a8599;line-height:1.6">한 번 입력하면 열 때 · 5분마다 · 수정 후 자동으로 동기화됩니다. 오프라인이면 노트북에 저장해 두었다가 연결되면 전송합니다. {{ startLabel }} 이전 날짜는 연동하지 않습니다.</div>
         </div>
         <div style="border:1px solid #e6e2ef;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -417,10 +418,17 @@ class Component extends DCLogic {
     window.addEventListener('appinstalled', () => this.setState({ canInstall: false, installed: true }));
     if (window.matchMedia && matchMedia('(display-mode: standalone)').matches) this.setState({ installed: true });
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    try { this._bc = new BroadcastChannel('diary-sync'); this._bc.onmessage = ev => { if (ev.data === 'saved') this.reloadFolder(); }; } catch (e) {}
+    this._vis = () => { if (document.visibilityState === 'visible') this.reloadFolder().then(() => this.sync(false)); }; document.addEventListener('visibilitychange', this._vis);
   }
-  componentWillUnmount() { clearInterval(this._iv); window.removeEventListener('online', this._on); window.removeEventListener('beforeinstallprompt', this._bip); }
+  async reloadFolder() {
+    if (!this.dir || this.state.needPerm) return;
+    await this.flush();
+    try { const ex = await this.loadFolder(this.dir); this._data = this.normalize(ex.data); this.setState({ data: this._data, memos: { ...this.state.memos, ...ex.memos } }); } catch (e) {}
+  }
+  componentWillUnmount() { try { this._bc && this._bc.close(); } catch (e) {} document.removeEventListener('visibilitychange', this._vis); clearInterval(this._iv); window.removeEventListener('online', this._on); window.removeEventListener('beforeinstallprompt', this._bip); }
   uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  normalize(d) { Object.keys(d).forEach(k => { d[k] = d[k].map(s => s && !s.id ? { ...s, id: this.uid() } : s); }); return d; }
+  normalize(d) { const seen = new Set(); Object.keys(d).forEach(k => { d[k] = d[k].map(s => { if (!s) return s; if (!s.id || seen.has(s.id)) s = { ...s, id: this.uid(), notionId: s.id ? '' : s.notionId, notion: 'pending' }; seen.add(s.id); return s; }); }); return d; }
   // ---------- 노트북 폴더 저장 ----------
   fsOK() { return typeof window.showDirectoryPicker === 'function'; }
   idb(mode, fn) { return new Promise((res, rej) => { const r = indexedDB.open('diary-fs', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onerror = () => rej(r.error); r.onsuccess = () => { const tx = r.result.transaction('kv', mode), q = fn(tx.objectStore('kv')); tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error); }; }); }
@@ -510,6 +518,7 @@ class Component extends DCLogic {
         if (!arr) await this.removeFile(this.dayPath(k));
         else await this.writeFile(this.dayPath(k), new Blob([JSON.stringify({ date: k, slots: arr.map(s => s && { ...s, files: (s.files || []).map(({ url, missing, ...f }) => (f.path ? f : { ...f, url })) }) }, null, 2)], { type: 'application/json' }));
       }
+      try { this._bc && this._bc.postMessage('saved'); } catch (e) {}
       const t = new Date(); this.setState({ lastSaved: `${this.pad(t.getHours())}:${this.pad(t.getMinutes())}:${this.pad(t.getSeconds())}` });
     } catch (e) { keys.forEach(k => this.dirty.add(k)); this.setState({ needPerm: true }); this.flash('폴더 저장 실패 — 상단의 ‘폴더 접근 허용’을 눌러주세요'); }
   }
@@ -526,16 +535,34 @@ class Component extends DCLogic {
     const r = await fetch(this.state.gas.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: this.state.gas.key, action, ...body }) });
     const j = await r.json(); if (!j.ok) throw new Error(j.error || '연동 오류'); return j;
   }
+  async rebuildNotion() {
+    if (!this.gasReady()) return this.flash('먼저 연동 주소와 키를 입력하세요');
+    if (!confirm('다이어리 내용을 기준으로 노션을 다시 맞춥니다.\n· 모든 항목을 노션에 다시 보냅니다\n· 다이어리에 없는 행과 이 연동이 만든 중복 행은 노션 휴지통으로 옮깁니다 (30일 안에 복구 가능)\n진행할까요?')) return;
+    const data = {}; Object.entries(this.D).forEach(([k, arr]) => { data[k] = this.locked(k) ? arr : arr.map(s => s && { ...s, notion: 'pending', updatedAt: Date.now() }); });
+    this.save(data, true);
+    this.flash('노션에 다시 보내는 중…');
+    await this.sync(false, true);
+    const left = Object.entries(this.D).reduce((n, [k, a]) => n + (this.locked(k) ? 0 : a.filter(s => s && s.notion === 'pending').length), 0);
+    if (left || this.state.syncState !== 'ok') return this.flash('일부 항목 전송 실패 — 정리는 하지 않았습니다. ' + (this.state.syncMsg || ''));
+    try {
+      const ids = []; Object.entries(this.D).forEach(([k, a]) => { if (!this.locked(k)) a.forEach(s => s && ids.push(s.id)); });
+      const r = await this.call('reconcile', { ids, from: this.state.start });
+      this.flash(`노션 정리 완료 · 중복/삭제된 행 ${r.archived}개를 휴지통으로 옮겼습니다`);
+      this.sync(false);
+    } catch (e) { this.flash('정리 실패: ' + (e.message || e)); }
+  }
   async testGas() {
     if (!this.gasReady()) return this.flash('웹 앱 URL과 DIARY_KEY를 입력하세요');
-    try { const r = await this.call('ping', {}); this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 3 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
+    try { const r = await this.call('ping', {}); this.flash(r.notionError ? '노션 설정 문제: ' + r.notionError : Number(r.version) >= 5 ? `연결됨 · 캘린더 ‘${r.calendar}’ · 노션 ${r.notion ? '연결' : '미설정'} · 코드 v${r.version}` : '연결됨 — 단, Apps Script가 예전 코드입니다. 새 Code.gs를 붙여 넣고 ‘새 버전’으로 배포하세요'); this.sync(false); }
     catch (e) { this.setState({ syncState: 'error', syncMsg: String(e.message || e) }); this.flash('연결 실패: ' + (e.message || e)); }
   }
   installApp() { const p = this._prompt; if (!p) return; p.prompt(); p.userChoice.finally(() => { this._prompt = null; this.setState({ canInstall: false }); }); }
   pushSoon() { if (!this.gasReady()) return; clearTimeout(this._pt); this._pt = setTimeout(() => this.sync(false, true), 4000); }
   async sync(manual, pushOnly) {
     if (!this.gasReady()) { if (manual) { this.setState({ settings: true }); this.flash('먼저 연동 주소와 키를 입력하세요'); } return; }
+    if (this.state.needPerm) { if (manual) this.flash('먼저 상단의 ‘폴더 접근 허용’을 눌러주세요 — 폴더 기록과 맞춘 뒤 동기화합니다'); return; }
     if (this._busy) { this._again = true; return; }
+    if (navigator.locks && !this._inLock) return navigator.locks.request('diary-sync', { ifAvailable: true }, async lock => { if (!lock) { if (manual) this.flash('다른 다이어리 창에서 동기화 중입니다'); return; } this._inLock = true; try { await this.sync(manual, pushOnly); } finally { this._inLock = false; } });
     this._busy = true; this.setState({ syncState: 'syncing' });
     const errs = [];
     try {
@@ -590,15 +617,19 @@ class Component extends DCLogic {
   placeSlot(data, k, s, pref) { const a = data[k] || [], arr = [0, 1, 2, 3].map(j => a[j] || null); const i = pref && pref >= 1 && pref <= 4 && !arr[pref - 1] ? pref - 1 : arr.findIndex(x => !x); if (i < 0) return false; arr[i] = s; data[k] = arr; return true; }
   mergeNotion(list, deleted) {
     const data = { ...this.D }, idx = {}; let changed = false;
-    Object.entries(data).forEach(([k, arr]) => arr.forEach((s, i) => { if (s && s.notionId) idx[s.notionId] = [k, i]; }));
+    const byId = {};
+    Object.entries(data).forEach(([k, arr]) => arr.forEach((s, i) => { if (!s) return; if (s.notionId) idx[s.notionId] = [k, i]; byId[s.id] = [k, i]; }));
     const setAt = (k, i, v) => { const a = [0, 1, 2, 3].map(j => (data[k] || [])[j] || null); a[i] = v; if (a.every(x => !x)) delete data[k]; else data[k] = a; changed = true; };
     list.forEach(n => {
       if (!n.date || this.locked(n.date)) return;
       const ed = Date.parse(n.edited) || 0, fields = { cat: this.catId(n.cat), title: n.title || '', time: n.time || '', place: n.place || '', nEdited: n.edited };
       if (typeof n.body === 'string') fields.body = n.body;
-      const at = idx[n.id];
+      if (n.did && !byId[n.did]) return;
+      const at = n.did ? byId[n.did] : idx[n.id];
       if (at) {
-        const [k, i] = at, s = data[k] && data[k][i]; if (!s) return;
+        const [k, i] = at, s0 = data[k] && data[k][i]; if (!s0) return;
+        const s = s0.notionId === n.id ? s0 : { ...s0, notionId: n.id };
+        if (s !== s0) setAt(k, i, s);
         const fresh = s.notion !== 'pending' && ed > (s.syncedAt || 0) + 60000;
         if (!fresh) { if (s.nEdited !== n.edited) setAt(k, i, { ...s, nEdited: n.edited }); return; }
         if (k === n.date) { setAt(k, i, { ...s, ...fields, syncedAt: ed }); return; }
@@ -982,7 +1013,7 @@ class Component extends DCLogic {
       installText: S.installed ? '설치된 앱으로 실행 중입니다' : S.canInstall ? '바탕화면·작업표시줄에 다이어리 아이콘을 만듭니다' : 'Chrome·Edge 주소창 오른쪽의 설치 아이콘(또는 메뉴 → 앱 설치)으로 설치하세요',
       gasUrl: S.gas.url, gasKey: S.gas.key,
       onGasUrl: e => this.setGas({ url: e.target.value.trim() }), onGasKey: e => this.setGas({ key: e.target.value.trim() }),
-      testGas: () => this.testGas(),
+      testGas: () => this.testGas(), rebuildNotion: () => this.rebuildNotion(),
       gasStatus: !gas ? '웹 앱 URL과 DIARY_KEY를 입력하세요' : S.syncState === 'error' ? `오류: ${S.syncMsg}` : S.syncState === 'offline' ? '연결할 수 없음 — 인터넷 연결을 확인하세요' : S.lastSync ? `연결됨 · 마지막 동기화 ${S.lastSync}` : '입력됨 — 연결 테스트를 눌러 확인하세요',
       onICS: e => { this.importICS(e.target.files[0]); e.target.value = ''; }, onCSV: e => { this.importCSV(e.target.files[0]); e.target.value = ''; }, clearICS: () => this.clearICS(),
       icsCount: (() => { const n = Object.values(S.ics || {}).reduce((a, b) => a + b.length, 0); return n ? `가져온 일정 ${n}개` : '가져온 일정 없음'; })(),
